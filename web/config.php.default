@@ -1,0 +1,89 @@
+<?php
+
+
+/*
+<!#CR>
+************************************************************************************************************************
+*                                                    Copyrigths ©                                                      *
+* -------------------------------------------------------------------------------------------------------------------- *
+* -------------------------------------------------------------------------------------------------------------------- *
+*                                           File and License Informations                                              *
+* -------------------------------------------------------------------------------------------------------------------- *
+*                         File Name    > <!#FN> config.php.default </#FN>                                              
+*                         File Birth   > <!#FB> 2023/04/10 20:50:55.363 </#FB>                                         *
+*                         File Mod     > <!#FT> 2024/06/06 20:36:59.591 </#FT>                                         *
+*                         License      > <!#LT> ERROR: no License name provided! </#LT>                                
+*                                        <!#LU>  </#LU>                                                                
+*                                        <!#LD>                                                    
+*                                        GNU General Public License version 3.0 (GPLv3) </#LD>                         
+*                         File Version > <!#FV> 1.3.0 </#FV>                                                           
+*                                                                                                                      *
+</#CR>
+*/
+
+
+
+
+$softname="AlertsOnWings";
+$vers="1.1";
+
+#session alive time in seconds, default 300 sec = 5 min
+$session_time=300;
+
+$globalSS['root_dir']=__DIR__;
+
+
+$globalSS['debug']=0; //режим отладки
+
+if($globalSS['debug']==1)
+{
+set_time_limit(30);
+error_reporting(E_ALL);
+ini_set('error_reporting', E_ALL);
+ini_set('display_errors',1);
+}
+
+
+
+include(''.$globalSS['root_dir'].'/boot.php');
+include_once(''.$globalSS['root_dir'].'/lib/functions/function.database.php');
+include_once(''.$globalSS['root_dir'].'/lib/functions/function.misc.php');
+include_once(''.$globalSS['root_dir'].'/lib/functions/function.getreport.php');
+include_once(''.$globalSS['root_dir'].'/lib/functions/function.reportmisc.php');
+include_once(''.$globalSS['root_dir'].'/lib/functions/function.dictionaries.php');
+include_once(''.$globalSS['root_dir'].'/lib/functions/function.users.php');
+include_once(''.$globalSS['root_dir'].'/lib/functions/function.hosts.php');
+include_once(''.$globalSS['root_dir'].'/lib/functions/function.sites.php');
+include_once(''.$globalSS['root_dir'].'/lib/functions/function.cmds.php');
+include_once(''.$globalSS['root_dir'].'/lib/functions/function.hostsservices.php');
+
+if(isset($_GET['srv']))
+  $srv=$_GET['srv'];
+else
+  $srv=0;
+
+
+
+$connectionParams = array();
+$connectionParams['srv']=$srv;
+$connectionParams['addr']=$address[$srv];
+$connectionParams['usr']=$user[$srv];
+$connectionParams['psw']=$pass[$srv];
+$connectionParams['dbase']=$db[$srv];
+$connectionParams['dbtype']=$srvdbtype[$srv];
+
+$globalSS['connectionParams'] = $connectionParams;
+
+#Блок значений по умолчанию. Вдруг подключения к базе нет, чтоб интерфейс не поплыл.
+$globalSS['language']="en";
+$globalSS['globaltheme']="default";
+
+$globalSS['refreshPeriod']="60";
+
+
+include_once("".$globalSS['root_dir']."/lang/".$globalSS['language']."");
+
+$globalSS['lang']=$_lang;
+
+
+?>

@@ -1,0 +1,13 @@
+<?php
+
+//1.00
+
+$_lang['stMODULEDESC'] = "Модуль отправки сообщений через почту";
+
+$_lang['stINSTALLED']="Установлено";
+$_lang['stUNINSTALLED']="Удалено";
+
+$_lang['stDATESYNCTGBOT']="Дата синхронизации с ТГ ботом";
+
+
+?>

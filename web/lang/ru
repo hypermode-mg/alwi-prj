@@ -1,0 +1,208 @@
+<?php
+
+$_lang['stEXECUTIONTIME']="время генерации страницы";
+$_lang['stSECONDS']="сек.";
+$_lang['stCREATORS']="<br /><font color=grey size=2>".$softname." создали используя мозговые технологии</font>";
+
+$_lang['stWELCOME']="Добро пожаловать в ".$softname." ".$vers."";
+
+
+
+$_lang['stLOGTABLE']="Лог операций";
+$_lang['stLOGDATESTART']="Начало";
+$_lang['stLOGDATEEND']="Окончание";
+$_lang['stLOGMESSAGE']="Сообщение";
+
+
+
+$_lang['stDBNAME']="Имя БД";
+
+$_lang['stSERVERNAME']="Имя сервера";
+
+
+$_lang['stCONFIGFILE']="Имя конфигурационного файла";
+$_lang['stACTION']="Действие";
+
+$_lang['stUSERPASSWORD'] = "Пароль";
+
+$_lang['stENTER'] = "Вход";
+
+$_lang['stAUTHFAIL'] = "Неудачная попытка входа";
+
+$_lang['stGROUP']="Сайт";
+$_lang['stGROUPS']="Сайты";
+$_lang['stQUANTITYHOSTS']="Количество хостов";
+
+
+$_lang['stGROUPNAME']="Имя сайта";
+$_lang['stCOMMENT']="Комментарий";
+$_lang['stADDGROUP']="Добавить сайт";
+$_lang['stFORMADDGROUP']="Форма для добавления сайта";
+$_lang['stFORMEDITGROUP']="Форма для редактирования сайта";
+
+$_lang['stGROUPADDED']="1 сайт добавлен";
+$_lang['stGROUPUPDATED']="1 сайт обновлен";
+$_lang['stGROUPDELETED']="1 сайт удален";
+
+$_lang['stADDRESS'] = "Адрес";
+$_lang['stWHO'] = "Кто?";
+
+$_lang['stFASTSEARCH'] = "Быстрый поиск";
+
+$_lang['stHOST']="Хост";
+
+$_lang['stINCLUDE'] = "Вкл?";
+
+$_lang['stVALUE'] = "Значение";
+$_lang['stPREVVALUE'] = "Предыд. значение";
+
+$_lang['stADD'] = "Добавить";
+$_lang['stEDIT'] = "Редактировать";
+$_lang['stSAVE'] = "Сохранить";
+$_lang['stDELETE'] = "Удалить";
+
+$_lang['stSITEADD']="Добавить сайт";
+$_lang['stSITEEDIT']="Редактировать сайт";
+$_lang['stSITESAVE']="Сохранить сайт";
+$_lang['stSITEDELETE']="Удалить сайт";
+
+$_lang['stSAVEUSER'] = "Сохранить пользователя";
+$_lang['stDELETEUSER'] = "Удалить пользователя";
+
+$_lang['stADDED'] = "Добавлено";
+$_lang['stUPDATED'] = "Обновлено";
+$_lang['stDELETED'] = "Удалено";
+
+$_lang['stBACKTOGROUPLIST'] = "К списку сайтов";
+
+$_lang['stBACK'] = "Назад";
+
+$_lang['stHOSTNAME'] = "Имя хоста";
+
+
+
+$_lang['stENTER']="Вход";
+
+$_lang['stAUTHFAIL']="Вы неправильно ввели логин или пароль";
+$_lang['stCHANGEPASSWORD']="Изменить пароль?";
+$_lang['stLOGINTOCABINET'] ="Войти в кабинет";
+$_lang['stLOGOUT']="Выйти";
+
+
+$_lang['stNMAPARRAY']="Диапазон";
+$_lang['stISEXECUTED']="Выполнено?";
+
+$_lang['stEXECUTING']="Выполняется";
+$_lang['stEXECUTED']="Выполнено";
+$_lang['stWAIT']="Ожидание";
+
+$_lang['stDATE']="Дата";
+$_lang['stNMAPCMD']="NMAP Команды";
+$_lang['stCMDADD']="Добавить команду";
+
+$_lang['stREPEAT']="Повторить";
+
+$_lang['stUSER']="Пользователь";
+$_lang['stEMAIL']="E-Mail";
+$_lang['stUSERS']="Пользователи";
+
+$_lang['stUSERLOGIN']="Логин";
+$_lang['stUSERPASSWORD']="Пароль";
+$_lang['stADDUSER']="Добавить пользователя";
+$_lang['stFORMADDUSER']="Форма для добавления пользователя";
+$_lang['stFORMEDITUSER']="Форма для редактирования пользователя";
+
+
+$_lang['stUSERADDED']="1 пользователь добавлен";
+$_lang['stUSERUPDATED']="1 пользователь обновлен";
+$_lang['stUSERDELETED']="1 пользователь удален";
+
+$_lang['stACTIVE']="Активирован";
+
+$_lang['stEDITCONN']="Редактировать подключение";
+
+$_lang['stTOOLS']="Инструменты";
+
+$_lang['stDEVICES']="Устройства";
+
+$_lang['stHOSTS']="Хосты";
+$_lang['stGROUPS']="Сайты";
+
+$_lang['stREPEAT']="Повторить";
+
+
+$_lang['stDICTIONARIES']="Справочники";
+$_lang['stDICTVENDORS']="Исполнение устройств";
+$_lang['stDICTMODELS']="Марки";
+$_lang['stDICTTYPES']="Типы";
+$_lang['stDICTOSES']="Операционные системы";
+
+
+
+$_lang['stFINDDEVICES']="Поиск устройств";
+
+$_lang['stSYSTEMTOOLS']="Системные инструменты";
+$_lang['stMAILPOST']="Почтовый ящик";
+$_lang['stMAILPOSTUSERS']="Почтовый ящик польз.";
+
+$_lang['stROWNAME']="Наименование";
+
+$_lang['stADMINPANEL']="Админка";
+$_lang['stIPADDRESS']="IP адрес";
+$_lang['stISPOLLACTIVE']="Опрос вкл?";
+$_lang['stHOSTTYPE']="Тип";
+$_lang['stHOSTNAME']="Имя хоста";
+$_lang['stHOSTVENDOR']="Исполнение устройства";
+$_lang['stHOSTMODEL']="Марка";
+$_lang['stHOSTLOCATION']="Местонахождение";
+$_lang['stHOSTOS']="Опер.Система";
+
+$_lang['stHOSTADD']="Добавить хост";
+$_lang['stHOSTSAVE']="Сохранить хост";
+$_lang['stHOSTDELETE']="Удалить хост";
+
+$_lang['stCLOSEWINDOW']="Закрыть окно";
+$_lang['stCLOSEWINDOWMSG']="Закройте это окно и продолжите работу.";
+
+$_lang['stLASTPOLLING']="Последний опрос произведен";
+
+$_lang['stSTATUS']="Статус";
+$_lang['stLASTPOLLED']="Последний опрос";
+$_lang['stDURATION']="Продолжительность";
+
+$_lang['stQUANTITY']="Количество";
+
+$_lang['stMESSAGE']="Сообщение";
+
+$_lang['stADDTODB']="Внести в базу";
+
+$_lang['stPOLLSTOPPED']="Опрос не работает";
+
+$_lang['stNOTIFICATON']="Уведомления";
+
+$_lang['stLINKTOCABINET']="Ссылка в кабинет";
+
+$_lang['stYES'] = "Да";
+$_lang['stNO'] = "Нет";
+
+$_lang['stLINK']="Ссылка";
+
+$_lang['stPORT']="Порт";
+$_lang['stSERVICES']="Сервисы";
+
+$_lang['stENABLED']="Включен";
+$_lang['stDISABLED']="Отключен";
+$_lang['stOPEN']="Открыть";
+
+$_lang['stCLEARFILTER']="Сбросить фильтр";
+
+$_lang['stSTATISTIC']="СТАТИСТИКА";
+
+$_lang['stSENSORTYPE']="Тип датчика";
+$_lang['stSENSORS']="Датчики";
+$_lang['stSENSORCMDDATA']="Доп. параметры команды";
+$_lang['stSENSORPOLLPERIOD']="Период опроса";
+$_lang['stSENSORPOLLTIME']="Единоразовый опрос (время)";
+$_lang['stSENSORVERSION']="Версия датчика";
+
+?>

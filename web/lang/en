@@ -1,0 +1,210 @@
+<?php
+
+$_lang['stEXECUTIONTIME']="page execution time";
+$_lang['stSECONDS']="seconds";
+$_lang['stCREATORS']="<br /><font color=grey size=2>".$softname." created by brain technology</a></font>";
+
+$_lang['stWELCOME']="Welcome!";
+
+
+
+$_lang['stLOGTABLE']="Log table";
+$_lang['stLOGDATESTART']="Date start";
+$_lang['stLOGDATEEND']="Date end";
+$_lang['stLOGMESSAGE']="Message";
+
+
+
+$_lang['stADDREMOVE']="Add / Remove";
+$_lang['stDBNAME']="DB name";
+
+$_lang['stSERVERNAME']="Server name";
+
+
+$_lang['stCONFIGFILE']="Config file name";
+$_lang['stACTION']="Action";
+
+$_lang['stUSERPASSWORD'] = "Password";
+
+
+
+$_lang['stGROUP']="Site";
+$_lang['stGROUPS']="Sites";
+$_lang['stQUANTITYHOSTS']="Quantity hosts";
+
+
+$_lang['stGROUPNAME']="Site name";
+$_lang['stCOMMENT']="Comment";
+$_lang['stADDGROUP']="Add site";
+$_lang['stFORMADDGROUP']="Form add site";
+$_lang['stFORMEDITGROUP']="Form edit site";
+
+$_lang['stGROUPADDED']="1 site added";
+$_lang['stGROUPUPDATED']="1 site updated";
+$_lang['stGROUPDELETED']="1 site deleted";
+
+$_lang['stADDRESS'] = "Address";
+$_lang['stWHO'] = "Who?";
+
+$_lang['stFASTSEARCH'] = "Fast search";
+
+$_lang['stHOST']="Host";
+
+$_lang['stINCLUDE'] = "Include?";
+
+$_lang['stVALUE'] = "Value";
+$_lang['stPREVVALUE'] = "Prev Value";
+
+$_lang['stADD'] = "Add";
+$_lang['stEDIT'] = "Edit";
+$_lang['stSAVE'] = "Save";
+$_lang['stDELETE'] = "Delete";
+
+$_lang['stSAVEUSER'] = "Save user";
+$_lang['stDELETEUSER'] = "Delete user";
+
+
+$_lang['stADDED'] = "Added";
+$_lang['stUPDATED'] = "Updated";
+$_lang['stDELETED'] = "Deleted";
+
+$_lang['stBACKTOGROUPLIST'] = "Back to sites list";
+
+$_lang['stBACK'] = "Back";
+
+$_lang['stHOSTNAME'] = "Host name";
+
+
+
+$_lang['stENTER']="Enter";
+
+$_lang['stAUTHFAIL']="Auth fail";
+$_lang['stCHANGEPASSWORD']="Change pass?";
+$_lang['stLOGINTOCABINET'] ="Log In";
+$_lang['stLOGOUT']="Logout";
+
+
+
+
+$_lang['stUSER']="User";
+$_lang['stEMAIL']="E-Mail";
+$_lang['stUSERS']="Users";
+
+$_lang['stUSERLOGIN']="Login";
+$_lang['stUSERPASSWORD']="Password";
+$_lang['stCOMMENT']="Comment";
+$_lang['stADDUSER']="Add user";
+$_lang['stFORMADDUSER']="Form add user";
+$_lang['stFORMEDITUSER']="Form edit user";
+
+
+$_lang['stUSERADDED']="1 user added";
+$_lang['stUSERUPDATED']="1 user updated";
+$_lang['stUSERDELETED']="1 user deleted";
+
+$_lang['stACTIVE']="Active";
+
+$_lang['stEDITCONN']="Edit connection to DB";
+
+$_lang['stTOOLS']="Tools";
+
+$_lang['stDEVICES']="Devices";
+
+$_lang['stHOSTS']="Hosts";
+$_lang['stGROUPS']="Sites";
+
+$_lang['stREPEAT']="Repeat";
+
+$_lang['stDICTIONARIES']="Dictionaries";
+$_lang['stDICTVENDORS']="Vendor";
+$_lang['stDICTMODELS']="Models";
+$_lang['stDICTTYPES']="Types";
+$_lang['stDICTOSES']="Operation systems";
+$_lang['stDICTGROUPS']="Groups";
+
+
+
+$_lang['stFINDDEVICES']="Find devices";
+
+$_lang['stSYSTEMTOOLS']="System tools";
+$_lang['stMAILPOST']="Mail post";
+$_lang['stMAILPOSTUSERS']="Mail post users";
+
+$_lang['stROWNAME']="Name";
+
+$_lang['stADMINPANEL']="Admin Panel";
+$_lang['stIPADDRESS']="IP address";
+$_lang['stISPOLLACTIVE']="Poll active?";
+$_lang['stHOSTTYPE']="Type";
+$_lang['stHOSTNAME']="Hostname";
+$_lang['stHOSTVENDOR']="Vendor";
+$_lang['stHOSTMODEL']="Model";
+$_lang['stHOSTLOCATION']="Location";
+$_lang['stHOSTOS']="Oper. system";
+
+$_lang['stHOSTADD']="Add host";
+$_lang['stHOSTSAVE']="Save host";
+$_lang['stHOSTDELETE']="Delete host";
+
+$_lang['stCLOSEWINDOW']="Close window";
+$_lang['stCLOSEWINDOWMSG']="Please, close the window and continue job.";
+
+$_lang['stENABLED']="Enabled";
+$_lang['stDISABLED']="Disabled";
+$_lang['stOPEN']="Open";
+
+$_lang['stSITEADD']="Add site";
+$_lang['stSITEEDIT']="Edit site";
+$_lang['stSITESAVE']="Save site";
+$_lang['stSITEDELETE']="Delete site";
+
+$_lang['stCLEARFILTER']="Clear filter";
+
+$_lang['stNMAPARRAY']="Array hosts to scan";
+$_lang['stISEXECUTED']="Is executed?";
+
+$_lang['stEXECUTING']="In progress";
+$_lang['stEXECUTED']="Executed";
+$_lang['stWAIT']="Wait";
+
+$_lang['stDATE']="Date";
+$_lang['stNMAPCMD']="Nmap commands";
+$_lang['stCMDADD']="Add command";
+
+$_lang['stLASTPOLLING']="Last polling";
+
+$_lang['stSTATUS']="Status";
+$_lang['stLASTPOLLED']="Last polled";
+$_lang['stDURATION']="Duration";
+
+$_lang['stQUANTITY']="Quantity";
+
+$_lang['stMESSAGE']="Message";
+
+$_lang['stADDTODB']="Add to Database";
+
+$_lang['stPOLLSTOPPED']="Poll breaked";
+
+$_lang['stNOTIFICATON']="Notification";
+
+$_lang['stLINKTOCABINET']="Link to cabinet";
+
+$_lang['stYES'] = "Yes";
+$_lang['stNO'] = "No";
+
+$_lang['stLINK']="Link";
+
+$_lang['stPORT']="Port";
+$_lang['stSERVICES']="Services";
+
+
+
+$_lang['stSTATISTIC']="STATISTIC";
+
+$_lang['stSENSORTYPE']="Sensor type";
+$_lang['stSENSORS']="Sensors";
+$_lang['stSENSORCMDDATA']="Sensor cmd data";
+$_lang['stSENSORPOLLPERIOD']="Sensor poll period";
+$_lang['stSENSORPOLLTIME']="Sensor poll time";
+$_lang['stSENSORVERSION']="Sensor version";
+?>
