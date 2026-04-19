@@ -1,0 +1,15 @@
+<?php
+
+//1.00
+
+$_lang['stMODULEDESC'] = "Модуль авторизации";
+
+$_lang['stLOGINTOADMIN'] = "Войти";
+
+
+
+$_lang['stINSTALLED']="Установлено";
+$_lang['stUNINSTALLED']="Удалено";
+
+
+?>

@@ -1,0 +1,47 @@
+services:
+  alwi-db:
+    image: mariadb:12.2.2
+    container_name: alwi-db
+    secrets:
+      - db_root_password
+      - db_password
+    environment:
+      MYSQL_ROOT_PASSWORD_FILE: /run/secrets/db_root_password
+      MYSQL_PASSWORD_FILE: /run/secrets/db_password
+      MYSQL_DATABASE: alertsonwings
+      MYSQL_USER: mysql-user
+    volumes:
+      - ./db:/var/lib/mysql
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+
+  alwi-php:
+    build: .
+    container_name: alwi-php
+    ports:
+      - "80:80"
+    volumes:
+      - ./web:/var/www/html
+    command: >
+      sh -c "
+        chown -R www-data:www-data /var/www/html &&
+        apache2-foreground
+      "
+    depends_on:
+      alwi-db:
+        condition: service_healthy
+    restart: unless-stopped
+
+secrets:
+  db_root_password:
+    file: db_root_password.txt
+  db_password:
+    file: db_password.txt
