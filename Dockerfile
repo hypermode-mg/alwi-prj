@@ -12,6 +12,7 @@ RUN apt-get update && \
     php-mysqli \
     php-calendar \
     wget \
+    cron \
     locales \
     libdbd-mysql-perl \
     python3 \
@@ -29,3 +30,7 @@ RUN ln -sf /usr/bin/python3 /usr/bin/python
 
 # Включение необходимых модулей Apache
 RUN a2enmod rewrite
+
+COPY docker-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+ENTRYPOINT ["docker-entrypoint.sh"]
