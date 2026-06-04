@@ -30,7 +30,7 @@ pipeline {
             steps {
                 withCredentials([
                     usernamePassword(
-                credentialsId: 'db-app-creds',
+                credentialsId: 'db-app-credentials',
                 usernameVariable: 'DB_USER',
                 passwordVariable: 'DB_PASS'
             )]) {
