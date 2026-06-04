@@ -8,6 +8,12 @@ pipeline {
         DB_NAME = 'alertsonwings'
         TZ = 'Asia/Yekaterinburg'
         REPO_URL = 'https://github.com/hypermode-mg/alwi-prj'
+        ENV_FILE=".env"
+        TARGET_FILE1="web/install/step1.php"
+        TARGET_FILE2="web/install/step2.php"
+        TARGET_FILE3="web/modules/pingit/pingit.pl"
+        TARGET_FILE4="web/modules/pingit/fetch.pl"
+        DB_CONFIG_FILE="web/conf/db1776658531.371.php"
     }
 
     stages {
@@ -30,14 +36,6 @@ pipeline {
             )]) {
                 script {
                     sh '''
-                # Определяем все переменные
-                ENV_FILE=".env"
-                TARGET_FILE1="web/install/step1.php"
-                TARGET_FILE2="web/install/step2.php"
-                TARGET_FILE3="web/modules/pingit/pingit.pl"
-                TARGET_FILE4="web/modules/pingit/fetch.pl"
-                DB_CONFIG_FILE="web/conf/db1776658531.371.php"
-
                 # Создаём .env файл с учётными данными БД
                 echo "DB_USER=${DB_USER}" > $ENV_FILE
                 echo "DB_NAME=${DB_NAME}" >> $ENV_FILE
