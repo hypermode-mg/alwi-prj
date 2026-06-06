@@ -37,7 +37,7 @@ pipeline {
                         # 2. Полная очистка каталога web
                         if [ -d "web" ]; then
                             echo "Removing existing 'web' directory..."
-                            rm -rf web
+                            sudo rm -rf web
                         fi
                         mkdir -p web
 
