@@ -65,7 +65,7 @@ echo "Empty 'web' directory prepared."
 printf "TZ=%s\n" "${TZ}" >> "$ENV_FILE"
 printf "DB_ROOT_PASS=%s\n" "${ROOT_PASSWORD}" >> "$ENV_FILE"
 printf "DB_USER=%s\n" "${DB_USER}" >> "$ENV_FILE"
-printf "DB_PASSWORD=%s\n" "${DB_PASSWORD}" >> "$ENV_FILE"
+printf "DB_PASS=%s\n" "${DB_PASS}" >> "$ENV_FILE"
 printf "DB_NAME=%s\n" "${DB_NAME}" >> "$ENV_FILE"
 
 mkdir -p web/conf
@@ -75,7 +75,7 @@ printf "  'enabled' => 1,\n"
 printf "  'srvname' => 'SuperMonitoring',\n"
 printf "  'db' => '%s',\n" "${DB_NAME}"
 printf "  'user' => '%s',\n" "${DB_USER}"
-printf "  'pass' => '%s',\n" "${DB_PASSWORD}"
+printf "  'pass' => '%s',\n" "${DB_PASS}"
 printf "  'address' => '%s',\n" "${DB_HOST}"
 printf "  'srvdbtype' => '0',\n"
 printf ");\n"
@@ -89,14 +89,14 @@ fi
 if [ -f "$TARGET_FILE2" ]; then
   sed -i "s|value=\"hpinger\"|value=\"${DB_NAME}\"|g" "$TARGET_FILE2"
   sed -i "s|value=\"localhost\"|value=\"${DB_HOST}\"|g" "$TARGET_FILE2"
-  sed -i "s|value=\"pass\"|value=\"${DB_PASSWORD}\"|g" "$TARGET_FILE2"
+  sed -i "s|value=\"pass\"|value=\"${DB_PASS}\"|g" "$TARGET_FILE2"
 fi
 
 for perl_file in "$TARGET_FILE3" "$TARGET_FILE4"; do
   if [ -f "$perl_file" ]; then
     sed -i "s/my \\$host = \"localhost\"/my \\$host = \"${DB_HOST}\"/g" "$perl_file"
     sed -i "s/my \\$db = \"hpinger\"/my \\$db = \"${DB_NAME}\"/g" "$perl_file"
-    sed -i "s/my \\$pass = \"pass\"/my \\$pass = \"${DB_PASSWORD}\"/g" "$perl_file"
+    sed -i "s/my \\$pass = \"pass\"/my \\$pass = \"${DB_PASS}\"/g" "$perl_file"
   fi
 done
 
