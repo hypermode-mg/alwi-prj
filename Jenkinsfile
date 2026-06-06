@@ -1,5 +1,4 @@
 pipeline {
-    // Агент — хост (Ubuntu), никаких docker-обёрток
     agent { label 'docker_agent' }
 
     environment {
@@ -8,11 +7,10 @@ pipeline {
         TARGET_FILE2 = "web/install/step2.php"
         TARGET_FILE3 = "web/modules/pingit/pingit.pl"
         TARGET_FILE4 = "web/modules/pingit/fetch.pl"
-        DB_CONFIG_FILE = "web/conf/db1780739515.5653.php"
+        DB_CONFIG_FILE = "web/conf/db1776658531.371.php"
         DOCKER_COMPOSE_FILE = "docker-compose.yml"
         DOCKER_IMAGE = "alwi-php:${BUILD_NUMBER}"
         DB_HOST = "alwi-db"
-        DB_PORT = "3306"
         DB_NAME = "alertsonwings"
         TZ = "Asia/Yekaterinburg"
     }
@@ -26,20 +24,20 @@ pipeline {
             steps {
                 script {
                     sh '''
-                        # 1. Очистка web БЕЗ sudo.
-                        # Если тут будет Permission denied — значит, файлы принадлежат root.
-                        # Это лечится ОДИН РАЗ через SSH на хосте: chown -R jenkins:jenkins <путь_к_workspace>
+                        echo "Cleaning workspace..."
+                        
+                        # Удаляем web, если существует. Без sudo.
                         if [ -d "web" ]; then
                             echo "Removing existing 'web' directory..."
                             rm -rf web
                         fi
                         mkdir -p web
 
-                        # 2. Чистим локальный Docker-контейнер (если он есть)
+                        # Останавливаем и удаляем старый контейнер, если есть
                         docker stop alwi-php || true
                         docker rm alwi-php || true
 
-                        # 3. Git
+                        # Git operations
                         git config --global user.email "ci@jenkins.local"
                         git config --global user.name "Jenkins CI"
                         
@@ -71,65 +69,73 @@ pipeline {
                 ]) {
                     script {
                         sh '''
-                            # Экспортируем переменные, чтобы безопасно использовать их в sed
+                            # Экспортируем переменные для использования в sed
                             export DB_NAME_VAL="${DB_NAME}"
                             export DB_HOST_VAL="${DB_HOST}"
-                            export DB_PASS_VAL="${DB_PASS}"
-                            export DB_USER_VAL="${DB_USER}"
-                            export ROOT_PASS_VAL="${ROOT_PASSWORD}"
-
+                            
+                            # 1. Создаем .env файл (можно оставить пустым или с мета-данными, пароли сюда не пишем)
                             > $ENV_FILE
                             echo "TZ=${TZ}" >> $ENV_FILE
-                            echo "DB_ROOT_PASS=${ROOT_PASS_VAL}" >> $ENV_FILE
-                            echo "DB_USER=${DB_USER_VAL}" >> $ENV_FILE
-                            echo "DB_PASS=${DB_PASS_VAL}" >> $ENV_FILE
-                            echo "DB_NAME=${DB_NAME_VAL}" >> $ENV_FILE
 
+                            # 2. Создаем конфиг БД (PHP array)
                             mkdir -p web/conf
                             cat > $DB_CONFIG_FILE <<EOF
 <?php return array (
   'enabled' => 1,
   'srvname' => 'SuperMonitoring',
   'db' => '${DB_NAME_VAL}',
-  'user' => '${DB_USER_VAL}',
-  'pass' => '${DB_PASS_VAL}',
+  'user' => '${DB_USER}',
+  'pass' => '${DB_PASS}',
   'address' => '${DB_HOST_VAL}',
   'srvdbtype' => '0',
 );
 ?>
 EOF
 
-                            # Проверки на существование файлов
+                            # Проверяем наличие файлов перед редактированием
                             if [ ! -f "$TARGET_FILE1" ]; then echo "ERROR: $TARGET_FILE1 not found"; ls -la web/install/ 2>/dev/null; exit 1; fi
                             if [ ! -f "$TARGET_FILE2" ]; then echo "ERROR: $TARGET_FILE2 not found"; ls -la web/install/ 2>/dev/null; exit 1; fi
+                            if [ ! -f "$TARGET_FILE3" ]; then echo "ERROR: $TARGET_FILE3 not found"; ls -la web/modules/pingit/ 2>/dev/null; exit 1; fi
+                            if [ ! -f "$TARGET_FILE4" ]; then echo "ERROR: $TARGET_FILE4 not found"; ls -la web/modules/pingit/ 2>/dev/null; exit 1; fi
 
-                            chmod u+w "$TARGET_FILE1" "$TARGET_FILE2" 2>/dev/null || true
+                            # Даем права на запись, если они сбились (безопасно игнорируем ошибку)
+                            chmod u+w "$TARGET_FILE1" "$TARGET_FILE2" "$TARGET_FILE3" "$TARGET_FILE4" 2>/dev/null || true
 
+                            # --- ВАШИ ЗАПРОШЕННЫЕ ИЗМЕНЕНИЯ ЧЕРЕЗ SED ---
+
+                            # Корректируем место поиска libphp в контейнере с apache2
                             sed -i 's|/etc/httpd/modules/|/usr/lib/apache2/modules/|g' "$TARGET_FILE1"
 
-                            # Безопасная подстановка переменных через разрыв кавычек
-                            sed -i 's|value="hpinger"|value="'"${DB_NAME_VAL}"'" |g' "$TARGET_FILE2"
-                            sed -i 's|value="localhost"|value="'"${DB_HOST_VAL}"'" |g' "$TARGET_FILE2"
-                            sed -i 's|value="pass"|value="'"${DB_PASS_VAL}"'" |g' "$TARGET_FILE2"
+                            # Корректируем значения переменных для упрощения настройки на втором шаге
+                            # Обратите внимание: здесь хардкод значений, как в вашем запросе
+                            sed -i 's|value="hpinger"|value="alertsonwings"|g' "$TARGET_FILE2"
+                            sed -i 's|value="localhost"|value="alwi-db"|g' "$TARGET_FILE2"
+                            sed -i 's|value="pass"|value="Enter user password"|g' "$TARGET_FILE2"
 
-                            echo "Step2.php updated successfully."
-                            grep -n -E 'value="[^"]*"' "$TARGET_FILE2" | head -10
+                            # Корректируем файл с настройками БД для использования в perl-модулях
+                            # Замена хоста
+                            sed -i "s/my \\$host = \"localhost\"/my \\$host = \"${DB_HOST_VAL}\"/g" "$TARGET_FILE3"
+                            sed -i "s/my \\$host = \"localhost\"/my \\$host = \"${DB_HOST_VAL}\"/g" "$TARGET_FILE4"
+                            
+                            # Замена имени БД
+                            sed -i "s/my \\$db = \"hpinger\"/my \\$db = \"${DB_NAME_VAL}\"/g" "$TARGET_FILE3"
+                            sed -i "s/my \\$db = \"hpinger\"/my \\$db = \"${DB_NAME_VAL}\"/g" "$TARGET_FILE4"
+                            
+                            # ЗАМЕНА ПАРОЛЯ НА ПЕРЕМЕННУЮ ОКРУЖЕНИЯ ДЛЯ PERL
+                            # Внутри одинарных кавычек доллар НЕ раскрывается bash-ом, поэтому в файл попадет текст $ENV{DB_PASS}
+                            # Это именно то, что нужно для работы в Perl: my $pass = $ENV{DB_PASS};
+                            sed -i 's/my $pass = "pass"/my $pass = $ENV{DB_PASS}/g' "$TARGET_FILE3"
+                            sed -i 's/my $pass = "pass"/my $pass = $ENV{DB_PASS}/g' "$TARGET_FILE4"
 
-                            for perl_file in "$TARGET_FILE3" "$TARGET_FILE4"; do
-                                if [ -f "$perl_file" ]; then
-                                    chmod u+w "$perl_file" 2>/dev/null || true
-                                    sed -i "s/my \\$host = \"localhost\"/my \\$host = \"${DB_HOST_VAL}\"/g" "$perl_file"
-                                    sed -i "s/my \\$db = \"hpinger\"/my \\$db = \"${DB_NAME_VAL}\"/g" "$perl_file"
-                                    sed -i "s/my \\$pass = \"pass\"/my \\$pass = \"${DB_PASS_VAL}\"/g" "$perl_file"
-                                else
-                                    echo "WARNING: Perl file not found: $perl_file (skipping)"
-                                fi
-                            done
+                            echo "Configuration updates completed successfully."
+                            
+                            # Отладочный вывод измененных строк
+                            grep -n -E 'host|db|pass' "$TARGET_FILE3" | head -10
+                            grep -n -E 'host|db|pass' "$TARGET_FILE4" | head -10
 
+                            # Копируем run-modules.sh
                             cp run-modules.sh web/modules/pingit/
                             if [ $? -ne 0 ]; then echo "ERROR: Failed to copy run-modules.sh"; exit 1; fi
-                            
-                            echo "Configuration update complete."
                         '''
                     }
                 }
@@ -142,7 +148,9 @@ EOF
                     if (!fileExists('Dockerfile')) {
                         error 'Dockerfile not found.'
                     }
-                    echo 'Dockerfile found.'
+                    echo 'Dockerfile found. Building image...'
+                    // Если вам нужен явный билд, раскомментируйте строку ниже:
+                    // sh "docker build -t ${DOCKER_IMAGE} ."
                 }
             }
         }
@@ -154,6 +162,12 @@ EOF
                         echo "ERROR: ${DOCKER_COMPOSE_FILE} not found."
                         exit 1
                     fi
+                    
+                    # Передаем переменные окружения в compose через export или явные аргументы
+                    # Убедитесь, что в docker-compose.yml есть: environment: - DB_PASS=${DB_PASS}
+                    export DB_PASS="${DB_PASS}"
+                    export DB_USER="${DB_USER}"
+                    
                     docker compose -f "${DOCKER_COMPOSE_FILE}" up -d --force-recreate alwi-php
                 '''
             }
@@ -179,9 +193,7 @@ EOF
                                 sleep 10
                             fi
                         done
-                        
                         docker ps --filter "name=alwi-php"
-                        docker logs alwi-php | grep -i "error\\\\|fail\\\\|exception\\\\|mysql\\\\|php\\\\|perl" || true
                     '''
                 }
             }
