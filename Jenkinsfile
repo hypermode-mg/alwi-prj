@@ -182,7 +182,5 @@ docker rm alwi-php || true
 '''
             }
         }
-        always {
-        }
     }
 }
