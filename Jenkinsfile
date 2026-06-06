@@ -18,17 +18,29 @@ pipeline {
         DB_PASSWORD = "${DB_PASS}" 
     }
 
-    stages {
         stage('Pre-Cleanup') {
             steps {
                 script {
                     sh '''
-docker stop alwi-php || true
-docker rm alwi-php || true
+# Сначала жёстко убиваем контейнер, если он есть
+docker kill alwi-php 2>/dev/null || true
+docker rm -f alwi-php 2>/dev/null || true
+
+# Ждём, чтобы ОС отпустила файловые дескрипторы
+sleep 3
+
+# Если папка web есть — удаляем её целиком
 if [ -d "web" ]; then
+  # Пробуем обычным способом
   rm -rf web
+  # Если не вышло (из-за прав), пробуем через sudo (если агент позволяет)
+  if [ $? -ne 0 ]; then
+    echo "WARNING: Normal rm failed, trying with sudo (may fail if no sudo)"
+    sudo rm -rf web 2>/dev/null || echo "ERROR: Could not remove 'web' even with sudo. Check permissions."
+  fi
   echo "Directory 'web' removed."
 fi
+
 mkdir -p web
 echo "Empty 'web' directory prepared."
 '''
