@@ -1,13 +1,16 @@
 #!/bin/bash
 set -e
 
+echo "Starting entrypoint script..."
+
 # -----------------------------------------------------------------------------
-# 1. Настройка прав доступа
+# 1. Настройка прав доступа (для Варианта А)
 # -----------------------------------------------------------------------------
-# Даем владельцу (jenkins/root) полные права, остальным — только чтение.
-# Запись для "других" запрещена (go-w), чтобы случайно не испортить файлы извне.
-# Это безопасно, так как Cron работает от root и игнорирует эти ограничения.
-chmod -R u+rwX,go+rX,go-w /var/www/html
+# Так как в Dockerfile мы сделали usermod -u <JENKINS_UID> www-data,
+# владелец файлов на хосте (jenkins) и внутри контейнера (www-data) теперь один и тот же (по UID).
+# Унифицируем права, чтобы не было сюрпризов от Git/Jenkins.
+find /var/www/html -type d -exec chmod 755 {} \;
+find /var/www/html -type f -exec chmod 644 {} \;
 
 # Убеждаемся, что логи и временные директории доступны
 mkdir -p /var/log/apache2 /var/run/apache2
@@ -15,44 +18,40 @@ chmod 755 /var/log/apache2 /var/run/apache2
 
 
 # -----------------------------------------------------------------------------
-# 2. Защита скриптов от прямого доступа через веб (CRITICAL)
+# 2. Защита скриптов от прямого доступа через веб
 # -----------------------------------------------------------------------------
-# Включаем конфиг, созданный в Dockerfile, который запрещает Apache отдавать
-# файлы из /var/www/html/modules/pingit по HTTP (возвращает 403 Forbidden).
-# Даже если в скриптах нет паролей, это скрывает логику работы системы.
 echo "Enabling Apache config to restrict access to /modules/pingit..."
 a2enconf restrict-pingit || {
-    echo "WARNING: Could not enable restrict-pingit.conf (might be already enabled)."
+    echo "WARNING: Could not enable restrict-pingit.conf"
 }
 
-# Проверка наличия симлинка (для отладки, можно убрать в продакшене)
-if [ ! -L /etc/apache2/conf-enabled/restrict-pingit.conf ]; then
-    echo "ERROR: restrict-pingit.conf is NOT enabled! Web server might expose scripts."
-    # Не выходим с ошибкой жестко, чтобы не ломать старт, но логируем проблему
-fi
-
 
 # -----------------------------------------------------------------------------
-# 3. Настройка Cron для запуска модулей
+# 3. Настройка Cron
 # -----------------------------------------------------------------------------
-# Очищаем старый крон для этого сервиса, чтобы не дублировать задачи при рестарте
+# Очищаем старый крон для этого сервиса, чтобы не дублировать задачи
 (crontab -l 2>/dev/null | grep -v "run-modules.sh") > /tmp/cron.new || true
 
 # Добавляем задачу: запускать каждые 5 минут
-# Важно: делаем cd в папку со скриптами, чтобы относительные пути внутри работали корректно
+# cd важен, чтобы относительные пути внутри скрипта работали корректно
 echo "*/5 * * * * root ( cd /var/www/html/modules/pingit && ./run-modules.sh ) >> /var/log/pingit.log 2>&1" >> /tmp/cron.new
 
 # Обновляем крон
 crontab /tmp/cron.new
 rm /tmp/cron.new
 
-echo "Cron job installed successfully."
+# ЗАПУСК ДЕМОНА CRON (критически важно: в минималистичных образах он не стартует сам)
+if command -v service >/dev/null 2>&1; then
+    service cron start
+else
+    cron
+fi
+echo "Cron daemon started."
 
 
 # -----------------------------------------------------------------------------
-# 4. Финальные проверки и запуск
+# 4. Финальные проверки и права на выполнение скриптов
 # -----------------------------------------------------------------------------
-echo "Checking required files..."
 if [ ! -f /var/www/html/modules/pingit/run-modules.sh ]; then
     echo "ERROR: run-modules.sh not found in expected location!"
     exit 1
@@ -62,10 +61,9 @@ if [ ! -f /var/www/html/modules/pingit/pingit.pl ]; then
     exit 1
 fi
 
-# Даем права на выполнение скриптам (на всякий случай, если Jenkins скопировал без +x)
+# Гарантируем бит выполнения (x) для скриптов, так как Git/Jenkins могут его сбросить
 chmod +x /var/www/html/modules/pingit/*.sh
 chmod +x /var/www/html/modules/pingit/*.pl
 
 echo "Starting Apache..."
-# exec передает управление процессу apache2, чтобы контейнер жил пока жив веб-сервер
 exec apache2-foreground
