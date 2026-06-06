@@ -22,13 +22,20 @@ pipeline {
             steps {
                 script {
                     sh '''
-                        # Останавливаем и удаляем контейнер приложения, если он есть
+                        # Останавливаем и удаляем ТОЛЬКО контейнер приложения, если он есть
                         docker stop alwi-php || true
                         docker rm alwi-php || true
 
-                        # Очищаем содержимое каталога web
-                        sudo rm -rf web
-                        echo "Directory 'web' cleaned successfully."
+                        # Удаляем всю папку web целиком, чтобы гарантированно обойти Permission denied.
+                        # Права будут восстановлены корректно через git + docker-entrypoint.sh
+                        if [ -d "web" ]; then
+                            sudo rm -rf web
+                            echo "Directory 'web' removed completely to avoid permission issues."
+                        fi
+                        
+                        # Создаем пустую директорию для последующих операций
+                        mkdir -p web
+                        echo "Empty 'web' directory prepared."
                     '''
                 }
             }
@@ -59,7 +66,7 @@ pipeline {
                 ]) {
                     script {
                         sh '''
-                            # Создаём .env файл, который будет читать docker compose
+                            # Создаём .env файл
                             > $ENV_FILE
                             echo "TZ=${TZ}" >> $ENV_FILE
                             echo "DB_ROOT_PASS=${ROOT_PASSWORD}" >> $ENV_FILE
@@ -67,7 +74,8 @@ pipeline {
                             echo "DB_PASS=${DB_PASS}" >> $ENV_FILE
                             echo "DB_NAME=${DB_NAME}" >> $ENV_FILE
 
-                            # Пишем готовый конфиг БД
+                            # Сразу пишем готовый конфиг БД
+                            mkdir -p web/conf
                             cat > $DB_CONFIG_FILE <<EOF
 <?php return array (
   'enabled' => 1,
@@ -126,7 +134,7 @@ EOF
                         exit 1
                     fi
 
-                    # Запускаем ТОЛЬКО сервис alwi-php, форсируем пересоздание контейнера
+                    # Запускаем ТОЛЬКО сервис alwi-php
                     docker compose -f "${DOCKER_COMPOSE_FILE}" up -d --force-recreate alwi-php
                 '''
             }
