@@ -93,11 +93,26 @@ if [ -f "$TARGET_FILE2" ]; then
 fi
 
 for perl_file in "$TARGET_FILE3" "$TARGET_FILE4"; do
-  if [ -f "$perl_file" ]; then
-    sed -i "s/my \\$host = \"localhost\"/my \\$host = \"${DB_HOST}\"/g" "$perl_file"
-    sed -i "s/my \\$db = \"hpinger\"/my \\$db = \"${DB_NAME}\"/g" "$perl_file"
-    sed -i "s/my \\$pass = \"pass\"/my \\$pass = \"${DB_PASS}\"/g" "$perl_file"
+  if [ ! -f "$perl_file" ]; then
+    echo "ERROR: File not found at path: $perl_file"
+    exit 1
   fi
+
+  echo "=== BEFORE $perl_file ==="
+  cat "$perl_file" | grep -E 'my\s+\$(host|db|pass)' || true
+
+  sed -i "s|my \\$\\$host = \"localhost\"|my \\$\\$host = \"${DB_HOST}\"|g" "$perl_file"
+  sed -i "s|my \\$\\$db = \"hpinger\"|my \\$\\$db = \"${DB_NAME}\"|g" "$perl_file"
+  sed -i "s|my \\$\\$pass = \"pass\"|my \\$\\$pass = \"${DB_PASS}\"|g" "$perl_file"
+
+  if [ $? -ne 0 ]; then
+    echo "ERROR: sed failed for $perl_file (exit code $?)"
+    exit 1
+  fi
+
+  echo "=== AFTER $perl_file ==="
+  cat "$perl_file" | grep -E 'my\s+\$(host|db|pass)' || true
+  echo "Successfully updated $perl_file"
 done
 
 if [ -f "run-modules.sh" ]; then
