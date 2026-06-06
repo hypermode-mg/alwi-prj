@@ -27,7 +27,7 @@ pipeline {
                         docker rm alwi-php || true
 
                         # Очищаем содержимое каталога web
-                        find web -mindepth 1 -delete
+                        sudo rm -rf web
                         echo "Directory 'web' cleaned successfully."
                     '''
                 }
