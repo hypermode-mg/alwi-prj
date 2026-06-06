@@ -15,6 +15,8 @@ pipeline {
         DB_NAME = "alertsonwings"
         TZ = "Asia/Yekaterinburg"
         REPO_URL = "https://github.com/hypermode-mg/alwi-prj"
+        // Важно: маппим DB_PASS (из credentials) в DB_PASSWORD для docker-compose.yml
+        DB_PASSWORD = "${DB_PASS}" 
     }
 
     stages {
@@ -22,18 +24,16 @@ pipeline {
             steps {
                 script {
                     sh '''
-                        # Останавливаем и удаляем ТОЛЬКО контейнер приложения, если он есть
+                        # Останавливаем и удаляем ТОЛЬКО контейнер приложения
                         docker stop alwi-php || true
                         docker rm alwi-php || true
 
-                        # Удаляем всю папку web целиком, чтобы гарантированно обойти Permission denied.
-                        # Права будут восстановлены корректно через git + docker-entrypoint.sh
+                        # Удаляем папку web (Jenkins имеет права на workspace)
                         if [ -d "web" ]; then
-                            sudo rm -rf web
-                            echo "Directory 'web' removed completely to avoid permission issues."
+                            rm -rf web
+                            echo "Directory 'web' removed."
                         fi
                         
-                        # Создаем пустую директорию для последующих операций
                         mkdir -p web
                         echo "Empty 'web' directory prepared."
                     '''
@@ -67,46 +67,57 @@ pipeline {
                     script {
                         sh '''
                             # Создаём .env файл
-                            > $ENV_FILE
-                            echo "TZ=${TZ}" >> $ENV_FILE
-                            echo "DB_ROOT_PASS=${ROOT_PASSWORD}" >> $ENV_FILE
-                            echo "DB_USER=${DB_USER}" >> $ENV_FILE
-                            echo "DB_PASS=${DB_PASS}" >> $ENV_FILE
-                            echo "DB_NAME=${DB_NAME}" >> $ENV_FILE
+                            > "$ENV_FILE"
+                            printf "TZ=%s\n" "${TZ}" >> "$ENV_FILE"
+                            printf "DB_ROOT_PASS=%s\n" "${ROOT_PASSWORD}" >> "$ENV_FILE"
+                            printf "DB_USER=%s\n" "${DB_USER}" >> "$ENV_FILE"
+                            printf "DB_PASSWORD=%s\n" "${DB_PASSWORD}" >> "$ENV_FILE"
+                            printf "DB_NAME=%s\n" "${DB_NAME}" >> "$ENV_FILE"
 
-                            # Сразу пишем готовый конфиг БД
+                            # Готовим директорию и конфиг БД с подстановкой переменных
                             mkdir -p web/conf
-                            cat > $DB_CONFIG_FILE <<EOF
+                            cat > "$DB_CONFIG_FILE" <<EOF
 <?php return array (
   'enabled' => 1,
   'srvname' => 'SuperMonitoring',
   'db' => '${DB_NAME}',
   'user' => '${DB_USER}',
-  'pass' => '${DB_PASS}',
+  'pass' => '${DB_PASSWORD}',
   'address' => '${DB_HOST}',
   'srvdbtype' => '0',
 );
 ?>
 EOF
-                            echo "Создан файл конфигурации базы данных: $DB_CONFIG_FILE"
 
-                            # Корректируем место поиска libphp
-                            sed -i 's|/etc/httpd/modules/|/usr/lib/apache2/modules/|g' "$TARGET_FILE1"
+                            # Корректируем путь к libphp (только если файл существует)
+                            if [ -f "$TARGET_FILE1" ]; then
+                                sed -i 's|/etc/httpd/modules/|/usr/lib/apache2/modules/|g' "$TARGET_FILE1"
+                            fi
 
-                            # Корректируем значения переменных для второго шага установки
-                            sed -i "s|value=\"hpinger\"|value=\"${DB_NAME}\"|g" "$TARGET_FILE2"
-                            sed -i "s|value=\"localhost\"|value=\"${DB_HOST}\"|g" "$TARGET_FILE2"
-                            sed -i "s|value=\"pass\"|value=\"${DB_PASS}\"|g" "$TARGET_FILE2"
+                            # Обновляем step2.php
+                            if [ -f "$TARGET_FILE2" ]; then
+                                sed -i "s|value=\"hpinger\"|value=\"${DB_NAME}\"|g" "$TARGET_FILE2"
+                                sed -i "s|value=\"localhost\"|value=\"${DB_HOST}\"|g" "$TARGET_FILE2"
+                                # Меняем только в явных атрибутах value, чтобы не затронуть другой код
+                                sed -i "s|value=\"pass\"|value=\"${DB_PASSWORD}\"|g" "$TARGET_FILE2"
+                            fi
 
-                            # Корректируем Perl‑файлы
+                            # Обновляем Perl-файлы (только явные строки подключения)
                             for perl_file in "$TARGET_FILE3" "$TARGET_FILE4"; do
-                                sed -i "s/my \\$host = \"localhost\"/my \\$host = \"${DB_HOST}\"/g" "$perl_file"
-                                sed -i "s/my \\$db = \"hpinger\"/my \\$db = \"${DB_NAME}\"/g" "$perl_file"
-                                sed -i "s/my \\$pass = \"pass\"/my \\$pass = \"${DB_PASS}\"/g" "$perl_file"
+                                if [ -f "$perl_file" ]; then
+                                    sed -i "s/my \\$host = \"localhost\"/my \\$host = \"${DB_HOST}\"/g" "$perl_file"
+                                    sed -i "s/my \\$db = \"hpinger\"/my \\$db = \"${DB_NAME}\"/g" "$perl_file"
+                                    sed -i "s/my \\$pass = \"pass\"/my \\$pass = \"${DB_PASSWORD}\"/g" "$perl_file"
+                                fi
                             done
 
-                            # Копируем скрипт запуска модулей
-                            cp run-modules.sh web/modules/pingit/
+                            # Копируем run-modules.sh в нужное место (на случай, если git его не кладёт туда)
+                            if [ -f "run-modules.sh" ]; then
+                                mkdir -p web/modules/pingit
+                                cp run-modules.sh web/modules/pingit/
+                            else
+                                echo "WARN: run-modules.sh not found, skipping copy."
+                            fi
 
                             echo "Configuration files updated with DB credentials"
                         '''
@@ -134,8 +145,13 @@ EOF
                         exit 1
                     fi
 
-                    # Запускаем ТОЛЬКО сервис alwi-php
+                    # Запускаем ТОЛЬКО сервис alwi-php, не трогая БД.
+                    # alwi-php будет ждать, пока alwi-db не станет healthy (это ожидаемо).
                     docker compose -f "${DOCKER_COMPOSE_FILE}" up -d --force-recreate alwi-php
+
+                    # Проверяем статус сервисов
+                    docker ps --filter "name=alwi-php" --filter "status=running"
+                    docker ps --filter "name=alwi-db" --filter "status=running" || echo "WARNING: alwi-db not found or not running"
                 '''
             }
         }
@@ -146,9 +162,9 @@ EOF
                     echo 'Waiting for web app to start...'
                     sh '''
                         attempt=0
-                        max_attempts=6
+                        max_attempts=15
                         while [ $attempt -lt $max_attempts ]; do
-                            if curl -f http://localhost; then
+                            if curl -f -m 5 http://localhost; then
                                 echo "Web page is accessible."
                                 break
                             else
@@ -163,7 +179,7 @@ EOF
                     '''
 
                     docker ps --filter "name=alwi-php"
-                    docker logs alwi-php | grep -i "error\\|fail\\|exception\\|mysql\\|php\\|perl" || true
+                    docker logs alwi-php 2>&1 | grep -i "error\\|fail\\|exception\\|mysql\\|php\\|perl" || true
                 }
             }
         }
@@ -182,6 +198,9 @@ EOF
                     docker rm alwi-php || true
                 '''
             }
+        }
+        always {
+            // При необходимости добавь отправку уведомлений
         }
     }
 }
