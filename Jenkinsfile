@@ -17,6 +17,21 @@ pipeline {
         REPO_URL = 'https://github.com/hypermode-mg/alwi-prj'
     }
 
+        stage('Pre-Cleanup') {
+            steps {
+                script {
+                    sh '''
+                        # Останавливаем и удаляем существующий контейнер приложения, если есть
+                        docker stop alwi-php || true
+                        docker rm alwi-php || true
+                        # Очищаем каталог web с правами root
+                        sudo rm -rf web/*
+                        echo "Directory 'web' cleaned successfully."
+                    '''
+                }
+            }
+        }
+
     stages {
         stage('Checkout Repository') {
             steps {
