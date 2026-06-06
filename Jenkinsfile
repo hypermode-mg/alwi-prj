@@ -29,6 +29,7 @@ pipeline {
                         if [ -d "web" ]; then
                             echo "Resetting 'web' contents via git checkout -- web..."
                             git checkout -- web
+                            # Даём права на запись текущему пользователю Jenkins
                             chmod -R u+rw web
                         else
                             mkdir -p web
@@ -142,10 +143,11 @@ EOF
                                 sleep 10
                             fi
                         done
+                        
+                        docker ps --filter "name=alwi-php"
+                        # ЧЕТЫРЕ слэша нужны, чтобы Groovy передал в Bash ровно \|
+                        docker logs alwi-php | grep -i "error\\\\|fail\\\\|exception\\\\|mysql\\\\|php\\\\|perl" || true
                     '''
-                    
-                    docker ps --filter "name=alwi-php"
-                    docker logs alwi-php | grep -i "error|fail|exception|mysql|php|perl" || true
                 }
             }
         }
