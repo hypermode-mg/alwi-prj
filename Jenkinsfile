@@ -18,33 +18,24 @@ pipeline {
     }
 
     stages {
-        // Объединяем очистку и чек-аут. Никакого sudo не нужно.
         stage('Pre-Cleanup & Checkout') {
             steps {
                 script {
                     sh '''
-                        # 1. Останавливаем и удаляем контейнер приложения
+                        # Останавливаем и удаляем контейнер приложения
                         docker stop alwi-php || true
                         docker rm alwi-php || true
 
-                        # 2. Если web есть, сбрасываем его содержимое через git.
-                        # Это перезапишет файлы актуальными из репозитория.
                         if [ -d "web" ]; then
                             echo "Resetting 'web' contents via git checkout -- web..."
                             git checkout -- web
-                            
-                            # 3. КРИТИЧЕСКИ ВАЖНО: Даём права на запись текущему пользователю.
-                            # Это решает проблему Permission denied для sed/cp на следующих этапах.
-                            # Мы не трогаем владельца (root/www-data), мы просто разрешаем запись.
                             chmod -R u+rw web
                         else
                             mkdir -p web
                         fi
 
-                        # 4. Получаем свежий код всего репозитория
                         git fetch --all
                         git reset --hard origin/main
-                        
                         echo "Workspace ready for configuration."
                     '''
                 }
@@ -67,7 +58,6 @@ pipeline {
                 ]) {
                     script {
                         sh '''
-                            # Создаём .env файл
                             > $ENV_FILE
                             echo "TZ=${TZ}" >> $ENV_FILE
                             echo "DB_ROOT_PASS=${ROOT_PASSWORD}" >> $ENV_FILE
@@ -75,7 +65,6 @@ pipeline {
                             echo "DB_PASS=${DB_PASS}" >> $ENV_FILE
                             echo "DB_NAME=${DB_NAME}" >> $ENV_FILE
 
-                            # Пишем конфиг БД сразу с подстановкой переменных
                             mkdir -p web/conf
                             cat > $DB_CONFIG_FILE <<EOF
 <?php return array (
@@ -91,7 +80,6 @@ pipeline {
 EOF
                             echo "Config file created."
 
-                            # Применяем замены
                             sed -i 's|/etc/httpd/modules/|/usr/lib/apache2/modules/|g' "$TARGET_FILE1"
                             sed -i "s|value=\"hpinger\"|value=\"${DB_NAME}\"|g" "$TARGET_FILE2"
                             sed -i "s|value=\"localhost\"|value=\"${DB_HOST}\"|g" "$TARGET_FILE2"
@@ -148,7 +136,7 @@ EOF
                             else
                                 attempt=$((attempt + 1))
                                 if [ $attempt -eq $max_attempts ]; then
-                                    echo "Failed to reach web page."
+                                    echo "Failed to reach web page after ${max_attempts} attempts."
                                     exit 1
                                 fi
                                 sleep 10
