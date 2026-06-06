@@ -32,7 +32,6 @@ pipeline {
             }
         }
 
-    stages {
         stage('Checkout Repository') {
             steps {
                 git(
@@ -114,15 +113,6 @@ EOF
             }
         }
 
-        stage('Stop Existing App Container') {
-            steps {
-                sh '''
-                    docker stop alwi-php || true
-                    docker rm alwi-php || true
-                '''
-            }
-        }
-
         stage('Deploy App Container') {
             steps {
                 withCredentials([usernamePassword(
@@ -135,7 +125,7 @@ EOF
                 docker run -d \\
                   --name alwi-php \\
                   -p 80:80 \\
-                  --network container:alwi-db \\
+                  --network alwi-net \\
                   -e TZ=${TZ} \\
                   -e DB_PASS=${DB_PASS} \\
                   ${DOCKER_IMAGE}
