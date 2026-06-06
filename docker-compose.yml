@@ -1,41 +1,46 @@
+version: '3.8'
+
 services:
   alwi-db:
-    image: mariadb:10.11
+    image: mariadb:10.6
     container_name: alwi-db
+    restart: unless-stopped
     environment:
-      - TZ=Asia/Yekaterinburg
-      - MARIADB_ROOT_PASSWORD=${DB_ROOT_PASS}
-      - MARIADB_USER=${DB_USER}
-      - MARIADB_PASSWORD=${DB_PASS}
-      - MARIADB_DATABASE=${DB_NAME}
-    networks:
-      - alwi-net
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MARIADB_DATABASE: ${DB_NAME}
+      MARIADB_USER: ${DB_USER}
+      MARIADB_PASSWORD: ${DB_PASSWORD}
     volumes:
       - ./db:/var/lib/mysql
-    healthcheck:
-      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-      start_period: 30s
-    restart: unless-stopped
-
-  alwi-php:
-    build: .
-    container_name: alwi-php
-    environment:
-      - TZ=Asia/Yekaterinburg
-      - DB_PASS=${DB_PASS}
     networks:
       - alwi-net
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  alwi-php:
+    build:
+      context: .
+      args:
+        JENKINS_UID: 1000
+    container_name: alwi-php
+    restart: unless-stopped
+    depends_on:
+      alwi-db:
+        condition: service_healthy
     ports:
       - "80:80"
     volumes:
       - ./web:/var/www/html
-    depends_on:
-      alwi-db:
-        condition: service_healthy
-    restart: unless-stopped
+    networks:
+      - alwi-net
+    environment:
+      DB_HOST: alwi-db
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
 
 networks:
   alwi-net:
