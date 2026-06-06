@@ -159,9 +159,10 @@ while [ $attempt -lt $max_attempts ]; do
     sleep 10
   fi
 done
+
+docker ps --filter "name=alwi-php"
+docker logs alwi-php 2>&1 | grep -i "error\\|fail\\|exception\\|mysql\\|php\\|perl" || true
 '''
-                    docker ps --filter "name=alwi-php"
-                    docker logs alwi-php 2>&1 | grep -i "error\\|fail\\|exception\\|mysql\\|php\\|perl" || true
                 }
             }
         }
