@@ -22,12 +22,14 @@ pipeline {
             steps {
                 script {
                     sh '''
+                        chown -R $USER:$USER .
+                        chmod -R u+rw .
+
                         docker stop alwi-php || true
                         docker rm alwi-php || true
 
                         if [ -d "web" ]; then
                             git checkout -- web
-                            chmod -R u+rw web
                         else
                             mkdir -p web
                         fi
@@ -141,7 +143,6 @@ EOF
                         done
                         
                         docker ps --filter "name=alwi-php"
-                        # Четыре слэша нужны для корректной передачи символа | в grep через Groovy
                         docker logs alwi-php | grep -i "error\\\\|fail\\\\|exception\\\\|mysql\\\\|php\\\\|perl" || true
                     '''
                 }
