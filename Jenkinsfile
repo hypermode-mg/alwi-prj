@@ -8,7 +8,7 @@ pipeline {
         TARGET_FILE2 = "web/install/step2.php"
         TARGET_FILE3 = "web/modules/pingit/pingit.pl"
         TARGET_FILE4 = "web/modules/pingit/fetch.pl"
-        DB_CONFIG_FILE = "web/conf/db1776658531.371.php"
+        DB_CONFIG_FILE = "web/conf/db1780739515.5653.php"
         DOCKER_COMPOSE_FILE = "docker-compose.yml"
         DOCKER_IMAGE = "alwi-php:${BUILD_NUMBER}"
         DB_HOST = "alwi-db"
