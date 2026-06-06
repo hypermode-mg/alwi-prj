@@ -22,7 +22,6 @@ pipeline {
         skipDefaultCheckout()  // Отключаем стандартный checkout
     }
 
-    stages {
         stage('Pre-Cleanup') {
             agent { label 'docker_agent' }
             steps {
@@ -33,10 +32,18 @@ docker rm -f alwi-php 2>/dev/null || true
 sleep 3
 
 if [ -d "web" ]; then
-  # Поэтапное удаление часто обходит блокировки лучше, чем rm -rf
-  find web -mindepth 1 -delete
+  # Сначала пробуем обычным способом
+  if ! find web -mindepth 1 -delete; then
+    echo "WARNING: Normal delete failed, trying with sudo..."
+    # Если не вышло — делаем то же самое через sudo
+    sudo find web -mindepth 1 -delete
+    if [ $? -ne 0 ]; then
+      echo "ERROR: Could not delete contents of 'web' even with sudo."
+      exit 1
+    fi
+  fi
   rmdir web
-  echo "Directory 'web' cleaned via find+rmdir."
+  echo "Directory 'web' cleaned successfully."
 else
   echo "No 'web' directory to clean."
 fi
@@ -47,7 +54,6 @@ echo "Empty 'web' directory prepared."
                 }
             }
         }
-
         stage('Checkout Repository') {
             agent { label 'docker_agent' }
             steps {
