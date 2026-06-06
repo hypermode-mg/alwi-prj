@@ -18,6 +18,7 @@ pipeline {
         DB_PASSWORD = "${DB_PASS}" 
     }
 
+    stages {
         stage('Pre-Cleanup') {
             steps {
                 script {
