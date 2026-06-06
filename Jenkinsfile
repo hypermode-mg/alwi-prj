@@ -99,9 +99,10 @@ pipeline {
 EOF
 
                             sed -i 's|/etc/httpd/modules/|/usr/lib/apache2/modules/|g' "$TARGET_FILE1"
-                            sed -i "s|value=\"hpinger\"|value=\"${DB_NAME}\"|g" "$TARGET_FILE2"
-                            sed -i "s|value=\"localhost\"|value=\"${DB_HOST}\"|g" "$TARGET_FILE2"
-                            sed -i "s|value=\"pass\"|value=\"${DB_PASS}\"|g" "$TARGET_FILE2"
+                            sed -i 's|value="hpinger"|value="'${DB_NAME}'" |g' "$TARGET_FILE2"
+                            sed -i 's|value="localhost"|value="'${DB_HOST}'" |g' "$TARGET_FILE2"
+                            sed -i 's|value="pass"|value="'Enter your password'" |g' "$TARGET_FILE2"
+
 
                             for perl_file in "$TARGET_FILE3" "$TARGET_FILE4"; do
                                 sed -i "s/my \\$host = \"localhost\"/my \\$host = \"${DB_HOST}\"/g" "$perl_file"
