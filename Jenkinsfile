@@ -22,21 +22,24 @@ pipeline {
             steps {
                 script {
                     sh '''
-                        chown -R $USER:$USER .
-                        chmod -R u+rw .
+                        # 1. Полная очистка каталога web, если он есть
+                        if [ -d "web" ]; then
+                            echo "Removing existing 'web' directory..."
+                            sudo rm -rf web
+                        fi
 
+                        # 2. Создаём чистый web
+                        mkdir -p web
+
+                        # 3. Останавливаем и удаляем контейнер приложения
                         docker stop alwi-php || true
                         docker rm alwi-php || true
 
-                        if [ -d "web" ]; then
-                            git checkout -- web
-                        else
-                            mkdir -p web
-                        fi
-
+                        # 4. Получаем свежий код всего репозитория
                         git fetch --all
                         git reset --hard origin/main
-                        echo "Workspace ready."
+                        
+                        echo "Workspace ready for configuration."
                     '''
                 }
             }
