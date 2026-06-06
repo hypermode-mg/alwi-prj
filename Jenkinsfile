@@ -22,14 +22,11 @@ pipeline {
             steps {
                 script {
                     sh '''
-                        # Останавливаем и удаляем контейнер приложения
                         docker stop alwi-php || true
                         docker rm alwi-php || true
 
                         if [ -d "web" ]; then
-                            echo "Resetting 'web' contents via git checkout -- web..."
                             git checkout -- web
-                            # Даём права на запись текущему пользователю Jenkins
                             chmod -R u+rw web
                         else
                             mkdir -p web
@@ -37,7 +34,7 @@ pipeline {
 
                         git fetch --all
                         git reset --hard origin/main
-                        echo "Workspace ready for configuration."
+                        echo "Workspace ready."
                     '''
                 }
             }
@@ -79,7 +76,6 @@ pipeline {
 );
 ?>
 EOF
-                            echo "Config file created."
 
                             sed -i 's|/etc/httpd/modules/|/usr/lib/apache2/modules/|g' "$TARGET_FILE1"
                             sed -i "s|value=\"hpinger\"|value=\"${DB_NAME}\"|g" "$TARGET_FILE2"
@@ -137,7 +133,7 @@ EOF
                             else
                                 attempt=$((attempt + 1))
                                 if [ $attempt -eq $max_attempts ]; then
-                                    echo "Failed to reach web page after ${max_attempts} attempts."
+                                    echo "Failed to reach web page."
                                     exit 1
                                 fi
                                 sleep 10
@@ -145,7 +141,7 @@ EOF
                         done
                         
                         docker ps --filter "name=alwi-php"
-                        # ЧЕТЫРЕ слэша нужны, чтобы Groovy передал в Bash ровно \|
+                        # Четыре слэша нужны для корректной передачи символа | в grep через Groovy
                         docker logs alwi-php | grep -i "error\\\\|fail\\\\|exception\\\\|mysql\\\\|php\\\\|perl" || true
                     '''
                 }
@@ -160,7 +156,7 @@ EOF
         failure {
             echo 'Deployment failed!'
             script {
-                echo 'Cleaning up application container only...'
+                echo 'Cleaning up application container...'
                 sh '''
                     docker stop alwi-php || true
                     docker rm alwi-php || true
