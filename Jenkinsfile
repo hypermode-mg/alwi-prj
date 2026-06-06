@@ -1,4 +1,5 @@
 pipeline {
+    // Важно: мы не полагаемся на автоматический checkout, делаем его сами
     agent { label 'docker_agent' }
 
     environment {
@@ -14,7 +15,11 @@ pipeline {
         DB_PORT = "3306"
         DB_NAME = "alertsonwings"
         TZ = "Asia/Yekaterinburg"
-        REPO_URL = "https://github.com/hypermode-mg/alwi-prj"
+    }
+
+    options {
+        // Отключаем стандартный checkout Jenkins
+        skipDefaultCheckout true
     }
 
     stages {
@@ -22,24 +27,35 @@ pipeline {
             steps {
                 script {
                     sh '''
-                        # 1. Полная очистка каталога web, если он есть
+                        # 1. КРИТИЧЕСКИ ВАЖНО: Сначала чиним права на ВСЕ файлы в workspace.
+                        # Это лечит файлы, которые могли быть созданы от root на прошлом запуске.
+                        # $USER подставится как 'jenkins' внутри контейнера.
+                        echo "Fixing file ownership to $USER..."
+                        chown -R $USER:$USER .
+                        chmod -R u+rw .
+
+                        # 2. Полная очистка каталога web
                         if [ -d "web" ]; then
                             echo "Removing existing 'web' directory..."
-                            sudo rm -rf web
+                            rm -rf web
                         fi
-
-                        # 2. Создаём чистый web
                         mkdir -p web
 
-                        # 3. Останавливаем и удаляем контейнер приложения
+                        # 3. Чистим контейнер
                         docker stop alwi-php || true
                         docker rm alwi-php || true
 
-                        # 4. Получаем свежий код всего репозитория
-                        git fetch --all
-                        git reset --hard origin/main
+                        # 4. Теперь, когда права исправлены, делаем git вручную
+                        git config --global user.email "ci@jenkins.local"
+                        git config --global user.name "Jenkins CI"
                         
-                        echo "Workspace ready for configuration."
+                        echo "Fetching from remote..."
+                        git fetch --all
+                        
+                        echo "Checking out main branch..."
+                        git checkout -f origin/main
+                        
+                        echo "Workspace is clean and ready."
                     '''
                 }
             }
