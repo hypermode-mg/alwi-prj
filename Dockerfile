@@ -1,6 +1,10 @@
 FROM ubuntu/apache2
 
-# Обновление списка пакетов и установка необходимых утилит
+ENV DEBIAN_FRONTEND=noninteractive
+ENV LANG=ru_RU.UTF-8
+ENV LANGUAGE=ru_RU.UTF-8
+ENV LC_ALL=ru_RU.UTF-8
+
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     php \
@@ -22,15 +26,18 @@ RUN apt-get update && \
     echo "ru_RU.UTF-8 UTF-8" > /etc/locale.gen && \
     locale-gen && \
     update-locale LANG=ru_RU.UTF-8 && \
+    # Создаем конфиг запрета доступа к чувствительной папке
+    echo '<Directory /var/www/html/modules/pingit>' > /etc/apache2/conf-available/restrict-pingit.conf && \
+    echo '    Require all denied' >> /etc/apache2/conf-available/restrict-pingit.conf && \
+    echo '</Directory>' >> /etc/apache2/conf-available/restrict-pingit.conf && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Настройка Python
 RUN ln -sf /usr/bin/python3 /usr/bin/python
-
-# Включение необходимых модулей Apache
 RUN a2enmod rewrite
 
 COPY docker-entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
 ENTRYPOINT ["docker-entrypoint.sh"]
+CMD ["apache2-foreground"]
