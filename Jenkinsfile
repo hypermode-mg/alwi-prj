@@ -114,12 +114,11 @@ EOF
 
                             # Корректируем файл с настройками БД для использования в perl-модулях
                             # Замена хоста
-                            sed -i "s/my \\$host = \"localhost\"/my \\$host = \"${DB_HOST_VAL}\"/g" "$TARGET_FILE3"
-                            sed -i "s/my \\$host = \"localhost\"/my \\$host = \"${DB_HOST_VAL}\"/g" "$TARGET_FILE4"
-                            
+                            sed -i 's/my $host = "localhost"/my $host = "'${DB_HOST_VAL}'"/g' "$TARGET_FILE3"
+                            sed -i 's/my $host = "localhost"/my $host = "'${DB_HOST_VAL}'"/g' "$TARGET_FILE4"
                             # Замена имени БД
-                            sed -i "s/my \\$db = \"hpinger\"/my \\$db = \"${DB_NAME_VAL}\"/g" "$TARGET_FILE3"
-                            sed -i "s/my \\$db = \"hpinger\"/my \\$db = \"${DB_NAME_VAL}\"/g" "$TARGET_FILE4"
+                            sed -i 's/my $db = "hpinger"/my $db = "'${DB_NAME_VAL}'"/g' "$TARGET_FILE3"
+                            sed -i 's/my $db = "hpinger"/my $db = "'${DB_NAME_VAL}'"/g' "$TARGET_FILE4"
                             
                             # ЗАМЕНА ПАРОЛЯ НА ПЕРЕМЕННУЮ ОКРУЖЕНИЯ ДЛЯ PERL
                             # Внутри одинарных кавычек доллар НЕ раскрывается bash-ом, поэтому в файл попадет текст $ENV{DB_PASS}
