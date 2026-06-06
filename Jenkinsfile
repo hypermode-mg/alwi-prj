@@ -143,8 +143,9 @@ EOF
                             fi
                         done
                     '''
+                    
                     docker ps --filter "name=alwi-php"
-                    docker logs alwi-php | grep -i "error\\|fail\\|exception\\|mysql\\|php\\|perl" || true
+                    docker logs alwi-php | grep -i "error|fail|exception|mysql|php|perl" || true
                 }
             }
         }
