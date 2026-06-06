@@ -1,88 +1,116 @@
 pipeline {
-    agent any
+    agent { label 'docker_agent' }
 
     environment {
-        DOCKER_COMPOSE_FILE = 'docker-compose.yml'
-        DB_HOST_VAL = 'alwi-db'
-        DB_NAME_VAL = 'alertsonwings'
-        // Убедитесь, что у вас в Jenkins создан credentialsId 'db-app-credentials'
-        // Он должен содержать пароль пользователя БД (или root, если они совпадают)
-        DB_CREDENTIALS_ID = 'db-app-credentials' 
+        ENV_FILE = ".env"
+        TARGET_FILE1 = "web/install/step1.php"
+        TARGET_FILE2 = "web/install/step2.php"
+        TARGET_FILE3 = "web/modules/pingit/pingit.pl"
+        TARGET_FILE4 = "web/modules/pingit/fetch.pl"
+        DB_CONFIG_FILE = "web/conf/db1776658531.371.php"
+        DOCKER_COMPOSE_FILE = "docker-compose.yml"
+        DB_HOST = "alwi-db"
+        DB_NAME = "alertsonwings"
+        TZ = "Asia/Yekaterinburg"
+    }
+
+    options {
+        skipDefaultCheckout true
     }
 
     stages {
-        stage('Checkout') {
-            steps {
-                checkout scm
-            }
-        }
-
-        stage('Prepare Files & Patch Code') {
+        stage('Pre-Cleanup & Checkout') {
             steps {
                 script {
-                    // Определяем пути к файлам относительно рабочей директории
-                    def TARGET_FILE1 = 'web/install/step1.php'
-                    def TARGET_FILE2 = 'web/install/step2.php'
-                    def TARGET_FILE3 = 'web/modules/pingit/pingit.pl'
-                    def TARGET_FILE4 = 'web/modules/pingit/fetch.pl'
+                    sh '''
+                        echo "Cleaning workspace..."
+                        rm -rf web
+                        mkdir -p web
 
-                    echo "Starting file patching process..."
+                        docker stop alwi-php alwi-db || true
+                        docker rm alwi-php alwi-db || true
 
-                    // 1. Даем права на запись тем файлам, которые будем менять
-                    sh """
-                        chmod u+w ${TARGET_FILE1} ${TARGET_FILE2} ${TARGET_FILE3} ${TARGET_FILE4}
-                    """
-
-                    // 2. Исправление пути в step1.php (Apache modules path)
-                    // Используем | как разделитель, чтобы не экранировать слэши
-                    sh """
-                        sed -i 's|/etc/httpd/modules/|/usr/lib/apache2/modules/|g' ${TARGET_FILE1}
-                    """
-
-                    // 3. Исправление значений в step2.php (UI labels/defaults)
-                    sh """
-                        sed -i 's|value="hpinger"|value="alertsonwings"|g' ${TARGET_FILE2}
-                        sed -i 's|value="localhost"|value="alwi-db"|g' ${TARGET_FILE2}
-                        sed -i 's|value="pass"|value="Enter user password"|g' ${TARGET_FILE2}
-                    """
-
-                    echo "DEBUG: DB_HOST_VAL='${DB_HOST_VAL}', DB_NAME_VAL='${DB_NAME_VAL}'"
-
-                    // 4. Замена host в pingit.pl и fetch.pl
-                    // Шаблон ловит и "localhost", и 'localhost' благодаря хитрой конструкции ['\'']
-                    sh """
-                        sed -i 's|my *\\$host *= *["'\'']localhost["'\'']|my \\$host = "'${DB_HOST_VAL}'"|g' ${TARGET_FILE3}
-                        sed -i 's|my *\\$host *= *["'\'']localhost["'\'']|my \\$host = "'${DB_HOST_VAL}'"|g' ${TARGET_FILE4}
-                    """
-                    
-                    // 5. Замена db в pingit.pl и fetch.pl
-                    sh """
-                        sed -i 's|my *\\$db *= *["'\'']hpinger["'\'']|my \\$db = "'${DB_NAME_VAL}'"|g' ${TARGET_FILE3}
-                        sed -i 's|my *\\$db *= *["'\'']hpinger["'\'']|my \\$db = "'${DB_NAME_VAL}'"|g' ${TARGET_FILE4}
-                    """
-
-                    // 6. Замена пароля на переменную окружения (КРИТИЧНО)
-                    // Было: my $pass = "pass"
-                    // Стало: my $pass = $ENV{DB_PASS}
-                    // Обратите внимание на экранирование $ для bash (\$) и отсутствие экранирования для perl ($ENV)
-                    sh """
-                        sed -i 's|my *\\$pass *= *["'\'']pass["'\'']|my \\$pass = \$ENV{DB_PASS}|g' ${TARGET_FILE3}
-                        sed -i 's|my *\\$pass *= *["'\'']pass["'\'']|my \\$pass = \$ENV{DB_PASS}|g' ${TARGET_FILE4}
-                    """
-
-                    // Финальная проверка замен (вывод в лог)
-                    echo "--- Final check in ${TARGET_FILE3} ---"
-                    sh "grep -n -E 'host|db|pass' ${TARGET_FILE3}"
-                    echo "--- Final check in ${TARGET_FILE4} ---"
-                    sh "grep -n -E 'host|db|pass' ${TARGET_FILE4}"
+                        git config --global user.email "ci@jenkins.local"
+                        git config --global user.name "Jenkins CI"
+                        
+                        git fetch --all
+                        git checkout -f origin/main
+                        
+                        echo "Workspace ready."
+                    '''
                 }
             }
         }
 
-        stage('Build Docker Image') {
+        stage('Modify App Configuration') {
             steps {
-                // Сборка образа. Контекст - текущая папка (там Dockerfile и web/)
-                sh 'docker build -t alwi-php:latest .'
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'db-app-credentials',
+                        usernameVariable: 'DB_USER',
+                        passwordVariable: 'DB_PASS'
+                    ),
+                    usernamePassword(
+                        credentialsId: 'db-root-credentials',
+                        usernameVariable: 'ROOT_USER',
+                        passwordVariable: 'ROOT_PASSWORD'
+                    )
+                ]) {
+                    script {
+                        sh '''
+                            export DB_NAME_VAL="${DB_NAME}"
+                            export DB_HOST_VAL="${DB_HOST}"
+                            
+                            # --- 1. Генерируем .env файл с СЕКРЕТАМИ ---
+                            > $ENV_FILE
+                            echo "TZ=${TZ}" >> $ENV_FILE
+                            echo "DB_USER=${DB_USER}" >> $ENV_FILE
+                            echo "DB_NAME=${DB_NAME_VAL}" >> $ENV_FILE
+                            echo "DB_ROOT_PASS=${ROOT_PASSWORD}" >> $ENV_FILE
+                            echo "DB_PASS=${DB_PASS}" >> $ENV_FILE
+                            chmod 600 $ENV_FILE  # Ограничиваем права на файл
+
+                            # --- 2. Генерируем PHP конфиг БД ---
+                            mkdir -p web/conf
+                            cat > $DB_CONFIG_FILE <<EOF
+<?php return array (
+  'enabled' => 1,
+  'srvname' => 'SuperMonitoring',
+  'db' => '${DB_NAME_VAL}',
+  'user' => '${DB_USER}',
+  'pass' => '${DB_PASS}',
+  'address' => '${DB_HOST_VAL}',
+  'srvdbtype' => '0',
+);
+?>
+EOF
+
+                            chmod u+w "$TARGET_FILE1" "$TARGET_FILE2" "$TARGET_FILE3" "$TARGET_FILE4"
+
+                            # --- 3. Надежные замены через sed ---
+                            sed -i 's|/etc/httpd/modules/|/usr/lib/apache2/modules/|g' "$TARGET_FILE1"
+                            sed -i 's|value="hpinger"|value="alertsonwings"|g' "$TARGET_FILE2"
+                            sed -i 's|value="localhost"|value="alwi-db"|g' "$TARGET_FILE2"
+                            sed -i 's|value="pass"|value="Enter user password"|g' "$TARGET_FILE2"
+
+                            echo "DEBUG: Patching DB vars. Host='${DB_HOST_VAL}'"
+
+                            sed -i 's|my *\\\$host *= *["'\'']localhost["'\'']|my \$host = "'${DB_HOST_VAL}'"|g' "$TARGET_FILE3"
+                            sed -i 's|my *\\\$host *= *["'\'']localhost["'\'']|my \$host = "'${DB_HOST_VAL}'"|g' "$TARGET_FILE4"
+                            
+                            sed -i 's|my *\\\$db *= *["'\'']hpinger["'\'']|my \$db = "'${DB_NAME_VAL}'"|g' "$TARGET_FILE3"
+                            sed -i 's|my *\\\$db *= *["'\'']hpinger["'\'']|my \$db = "'${DB_NAME_VAL}'"|g' "$TARGET_FILE4"
+                            
+                            sed -i 's|my *\\\$pass *= *["'\'']pass["'\'']|my \$pass = \$ENV{DB_PASS}|g' "$TARGET_FILE3"
+                            sed -i 's|my *\\\$pass *= *["'\'']pass["'\'']|my \$pass = \$ENV{DB_PASS}|g' "$TARGET_FILE4"
+
+                            grep -n -E 'host|db|pass' "$TARGET_FILE3" || true
+                            grep -n -E 'host|db|pass' "$TARGET_FILE4" || true
+
+                            cp run-modules.sh web/modules/pingit/
+                        '''
+                    }
+                }
             }
         }
 
@@ -90,26 +118,50 @@ pipeline {
             steps {
                 withCredentials([
                     usernamePassword(
-                        credentialsId: "${DB_CREDENTIALS_ID}",
+                        credentialsId: 'db-app-credentials',
                         usernameVariable: 'DB_USER',
                         passwordVariable: 'DB_PASS'
+                    ),
+                    usernamePassword(
+                        credentialsId: 'db-root-credentials',
+                        usernameVariable: 'ROOT_USER',
+                        passwordVariable: 'ROOT_PASSWORD'
                     )
                 ]) {
                     sh '''
-                        if [ ! -f "${DOCKER_COMPOSE_FILE}" ]; then
-                            echo "ERROR: ${DOCKER_COMPOSE_FILE} not found."
-                            exit 1
-                        fi
-                        
-                        # Экспортируем переменные для docker compose
-                        export DB_USER="${DB_USER}"
+                        # Экспортируем переменные окружения для docker compose
                         export DB_PASS="${DB_PASS}"
-                        
-                        # Передаем переменные в compose. 
-                        # В docker-compose.yml должно быть: - DB_PASS=${DB_PASS} в секции alwi-php
-                        echo "Deploying with DB_USER=${DB_USER} (password hidden)"
-                        
-                        docker compose -f "${DOCKER_COMPOSE_FILE}" up -d --force-recreate alwi-php alwi-db
+                        export DB_USER="${DB_USER}"
+                        export DB_ROOT_PASS="${ROOT_PASSWORD}"
+                        export DB_NAME="${DB_NAME}"
+
+                        echo "Deploying with --build..."
+                        # Docker compose прочитает переменные из окружения. 
+                        # Если в compose есть `env_file: .env`, он тоже подхватит их оттуда.
+                        docker compose -f "${DOCKER_COMPOSE_FILE}" up -d --build --force-recreate alwi-php alwi-db
+                    '''
+                }
+            }
+        }
+
+        stage('Verify Deployment') {
+            steps {
+                script {
+                    echo 'Waiting for web app to start...'
+                    sh '''
+                        attempt=0
+                        max_attempts=15
+                        while [ $attempt -lt $max_attempts ]; do
+                            if curl -f http://localhost; then
+                                echo "Web page is accessible."
+                                break
+                            else
+                                attempt=$((attempt + 1))
+                                [ $attempt -eq $max_attempts ] && { echo "Timeout waiting for app."; exit 1; }
+                                sleep 10
+                            fi
+                        done
+                        docker ps --filter "name=alwi-php" --filter "status=running"
                     '''
                 }
             }
@@ -117,13 +169,17 @@ pipeline {
     }
 
     post {
-        always {
-            echo 'Pipeline finished. Checking status...'
-            // Можно добавить очистку workspace, если нужно
-            // cleanWs() 
+        success {
+            echo 'Deployment successful!'
         }
         failure {
-            echo 'Pipeline failed! Check the logs above for the specific error (likely in sed or docker build).'
+            echo 'Deployment failed!'
+            script {
+                sh '''
+                    docker stop alwi-php alwi-db || true
+                    docker rm alwi-php alwi-db || true
+                '''
+            }
         }
     }
 }
