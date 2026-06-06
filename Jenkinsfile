@@ -1,5 +1,5 @@
 pipeline {
-    agent { label 'docker_agent' }
+    agent none  // Важно: не выделяем агент сразу, сделаем это позже
 
     environment {
         ENV_FILE = ".env"
@@ -15,31 +15,30 @@ pipeline {
         DB_NAME = "alertsonwings"
         TZ = "Asia/Yekaterinburg"
         REPO_URL = "https://github.com/hypermode-mg/alwi-prj"
-        DB_PASSWORD = "${DB_PASS}" 
+    }
+
+    // Очистка ДО того, как Jenkins сделает git checkout
+    options {
+        skipDefaultCheckout()  // Отключаем стандартный checkout
     }
 
     stages {
         stage('Pre-Cleanup') {
+            agent { label 'docker_agent' }
             steps {
                 script {
                     sh '''
-# Сначала жёстко убиваем контейнер, если он есть
 docker kill alwi-php 2>/dev/null || true
 docker rm -f alwi-php 2>/dev/null || true
-
-# Ждём, чтобы ОС отпустила файловые дескрипторы
 sleep 3
 
-# Если папка web есть — удаляем её целиком
 if [ -d "web" ]; then
-  # Пробуем обычным способом
-  rm -rf web
-  # Если не вышло (из-за прав), пробуем через sudo (если агент позволяет)
-  if [ $? -ne 0 ]; then
-    echo "WARNING: Normal rm failed, trying with sudo (may fail if no sudo)"
-    sudo rm -rf web 2>/dev/null || echo "ERROR: Could not remove 'web' even with sudo. Check permissions."
-  fi
-  echo "Directory 'web' removed."
+  # Поэтапное удаление часто обходит блокировки лучше, чем rm -rf
+  find web -mindepth 1 -delete
+  rmdir web
+  echo "Directory 'web' cleaned via find+rmdir."
+else
+  echo "No 'web' directory to clean."
 fi
 
 mkdir -p web
@@ -50,7 +49,9 @@ echo "Empty 'web' directory prepared."
         }
 
         stage('Checkout Repository') {
+            agent { label 'docker_agent' }
             steps {
+                // Теперь чекаут делаем явно, когда workspace уже почищен
                 git(
                     url: "${REPO_URL}",
                     branch: 'main'
@@ -59,6 +60,7 @@ echo "Empty 'web' directory prepared."
         }
 
         stage('Modify App Configuration') {
+            agent { label 'docker_agent' }
             steps {
                 withCredentials([
                     usernamePassword(
@@ -147,6 +149,7 @@ echo "Configuration files updated with DB credentials"
         }
 
         stage('Build Docker Image') {
+            agent { label 'docker_agent' }
             steps {
                 script {
                     if (!fileExists('Dockerfile')) {
@@ -158,6 +161,7 @@ echo "Configuration files updated with DB credentials"
         }
 
         stage('Deploy via Docker Compose') {
+            agent { label 'docker_agent' }
             steps {
                 sh '''
 if [ ! -f "${DOCKER_COMPOSE_FILE}" ]; then
@@ -172,6 +176,7 @@ docker ps --filter "name=alwi-db" --filter "status=running" || echo "WARNING: al
         }
 
         stage('Verify Deployment') {
+            agent { label 'docker_agent' }
             steps {
                 script {
                     echo 'Waiting for web app to start...'
