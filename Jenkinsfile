@@ -1,5 +1,5 @@
 pipeline {
-    // Важно: мы не полагаемся на автоматический checkout, делаем его сами
+    // Агент — хост (Ubuntu), никаких docker-обёрток
     agent { label 'docker_agent' }
 
     environment {
@@ -18,7 +18,6 @@ pipeline {
     }
 
     options {
-        // Отключаем стандартный checkout Jenkins
         skipDefaultCheckout true
     }
 
@@ -27,18 +26,20 @@ pipeline {
             steps {
                 script {
                     sh '''
-                        # 1. Полная очистка каталога web
+                        # 1. Очистка web БЕЗ sudo.
+                        # Если тут будет Permission denied — значит, файлы принадлежат root.
+                        # Это лечится ОДИН РАЗ через SSH на хосте: chown -R jenkins:jenkins <путь_к_workspace>
                         if [ -d "web" ]; then
                             echo "Removing existing 'web' directory..."
-                            sudo rm -rf web
+                            rm -rf web
                         fi
                         mkdir -p web
 
-                        # 2. Чистим контейнер
+                        # 2. Чистим локальный Docker-контейнер (если он есть)
                         docker stop alwi-php || true
                         docker rm alwi-php || true
 
-                        # 3. Теперь, когда права исправлены, делаем git вручную
+                        # 3. Git
                         git config --global user.email "ci@jenkins.local"
                         git config --global user.name "Jenkins CI"
                         
@@ -70,41 +71,65 @@ pipeline {
                 ]) {
                     script {
                         sh '''
+                            # Экспортируем переменные, чтобы безопасно использовать их в sed
+                            export DB_NAME_VAL="${DB_NAME}"
+                            export DB_HOST_VAL="${DB_HOST}"
+                            export DB_PASS_VAL="${DB_PASS}"
+                            export DB_USER_VAL="${DB_USER}"
+                            export ROOT_PASS_VAL="${ROOT_PASSWORD}"
+
                             > $ENV_FILE
                             echo "TZ=${TZ}" >> $ENV_FILE
-                            echo "DB_ROOT_PASS=${ROOT_PASSWORD}" >> $ENV_FILE
-                            echo "DB_USER=${DB_USER}" >> $ENV_FILE
-                            echo "DB_PASS=${DB_PASS}" >> $ENV_FILE
-                            echo "DB_NAME=${DB_NAME}" >> $ENV_FILE
+                            echo "DB_ROOT_PASS=${ROOT_PASS_VAL}" >> $ENV_FILE
+                            echo "DB_USER=${DB_USER_VAL}" >> $ENV_FILE
+                            echo "DB_PASS=${DB_PASS_VAL}" >> $ENV_FILE
+                            echo "DB_NAME=${DB_NAME_VAL}" >> $ENV_FILE
 
                             mkdir -p web/conf
                             cat > $DB_CONFIG_FILE <<EOF
 <?php return array (
   'enabled' => 1,
   'srvname' => 'SuperMonitoring',
-  'db' => '${DB_NAME}',
-  'user' => '${DB_USER}',
-  'pass' => '${DB_PASS}',
-  'address' => '${DB_HOST}',
+  'db' => '${DB_NAME_VAL}',
+  'user' => '${DB_USER_VAL}',
+  'pass' => '${DB_PASS_VAL}',
+  'address' => '${DB_HOST_VAL}',
   'srvdbtype' => '0',
 );
 ?>
 EOF
 
-                            sed -i 's|/etc/httpd/modules/|/usr/lib/apache2/modules/|g' "$TARGET_FILE1"
-                            sed -i 's|value="hpinger"|value="'${DB_NAME}'" |g' "$TARGET_FILE2"
-                            sed -i 's|value="localhost"|value="'${DB_HOST}'" |g' "$TARGET_FILE2"
-                            sed -i 's|value="pass"|value="'Enter your password'" |g' "$TARGET_FILE2"
+                            # Проверки на существование файлов
+                            if [ ! -f "$TARGET_FILE1" ]; then echo "ERROR: $TARGET_FILE1 not found"; ls -la web/install/ 2>/dev/null; exit 1; fi
+                            if [ ! -f "$TARGET_FILE2" ]; then echo "ERROR: $TARGET_FILE2 not found"; ls -la web/install/ 2>/dev/null; exit 1; fi
 
+                            chmod u+w "$TARGET_FILE1" "$TARGET_FILE2" 2>/dev/null || true
+
+                            sed -i 's|/etc/httpd/modules/|/usr/lib/apache2/modules/|g' "$TARGET_FILE1"
+
+                            # Безопасная подстановка переменных через разрыв кавычек
+                            sed -i 's|value="hpinger"|value="'"${DB_NAME_VAL}"'" |g' "$TARGET_FILE2"
+                            sed -i 's|value="localhost"|value="'"${DB_HOST_VAL}"'" |g' "$TARGET_FILE2"
+                            sed -i 's|value="pass"|value="'"${DB_PASS_VAL}"'" |g' "$TARGET_FILE2"
+
+                            echo "Step2.php updated successfully."
+                            grep -n -E 'value="[^"]*"' "$TARGET_FILE2" | head -10
 
                             for perl_file in "$TARGET_FILE3" "$TARGET_FILE4"; do
-                                sed -i "s/my \\$host = \"localhost\"/my \\$host = \"${DB_HOST}\"/g" "$perl_file"
-                                sed -i "s/my \\$db = \"hpinger\"/my \\$db = \"${DB_NAME}\"/g" "$perl_file"
-                                sed -i "s/my \\$pass = \"pass\"/my \\$pass = \"${DB_PASS}\"/g" "$perl_file"
+                                if [ -f "$perl_file" ]; then
+                                    chmod u+w "$perl_file" 2>/dev/null || true
+                                    sed -i "s/my \\$host = \"localhost\"/my \\$host = \"${DB_HOST_VAL}\"/g" "$perl_file"
+                                    sed -i "s/my \\$db = \"hpinger\"/my \\$db = \"${DB_NAME_VAL}\"/g" "$perl_file"
+                                    sed -i "s/my \\$pass = \"pass\"/my \\$pass = \"${DB_PASS_VAL}\"/g" "$perl_file"
+                                else
+                                    echo "WARNING: Perl file not found: $perl_file (skipping)"
+                                fi
                             done
 
                             cp run-modules.sh web/modules/pingit/
-                            echo "Configuration updated."
+                            if [ $? -ne 0 ]; then echo "ERROR: Failed to copy run-modules.sh"; exit 1; fi
+                            
+                            echo "Configuration update complete."
                         '''
                     }
                 }
