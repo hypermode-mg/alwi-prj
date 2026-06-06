@@ -8,6 +8,8 @@ services:
       - MARIADB_USER=${DB_USER}
       - MARIADB_PASSWORD=${DB_PASS}
       - MARIADB_DATABASE=${DB_NAME}
+    networks:
+      - alwi-net
     volumes:
       - ./db:/var/lib/mysql
     healthcheck:
@@ -24,6 +26,8 @@ services:
     environment:
       - TZ=Asia/Yekaterinburg
       - DB_PASS=${DB_PASS}
+    networks:
+      - alwi-net
     ports:
       - "80:80"
     volumes:
@@ -32,3 +36,7 @@ services:
       alwi-db:
         condition: service_healthy
     restart: unless-stopped
+
+networks:
+  alwi-net:
+    driver: bridge
