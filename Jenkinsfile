@@ -27,25 +27,18 @@ pipeline {
             steps {
                 script {
                     sh '''
-                        # 1. КРИТИЧЕСКИ ВАЖНО: Сначала чиним права на ВСЕ файлы в workspace.
-                        # Это лечит файлы, которые могли быть созданы от root на прошлом запуске.
-                        # $USER подставится как 'jenkins' внутри контейнера.
-                        echo "Fixing file ownership to $USER..."
-                        chown -R $USER:$USER .
-                        chmod -R u+rw .
-
-                        # 2. Полная очистка каталога web
+                        # 1. Полная очистка каталога web
                         if [ -d "web" ]; then
                             echo "Removing existing 'web' directory..."
                             sudo rm -rf web
                         fi
                         mkdir -p web
 
-                        # 3. Чистим контейнер
+                        # 2. Чистим контейнер
                         docker stop alwi-php || true
                         docker rm alwi-php || true
 
-                        # 4. Теперь, когда права исправлены, делаем git вручную
+                        # 3. Теперь, когда права исправлены, делаем git вручную
                         git config --global user.email "ci@jenkins.local"
                         git config --global user.name "Jenkins CI"
                         
