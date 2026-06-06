@@ -99,7 +99,9 @@ for perl_file in "$TARGET_FILE3" "$TARGET_FILE4"; do
   fi
 
   echo "=== BEFORE $perl_file ==="
-  cat "$perl_file" | grep -E 'my\s+\$(host|db|pass)' || true
+  grep 'my $host' "$perl_file" || true
+  grep 'my $db' "$perl_file" || true
+  grep 'my $pass' "$perl_file" || true
 
   sed -i "s|my \\$\\$host = \"localhost\"|my \\$\\$host = \"${DB_HOST}\"|g" "$perl_file"
   sed -i "s|my \\$\\$db = \"hpinger\"|my \\$\\$db = \"${DB_NAME}\"|g" "$perl_file"
@@ -111,7 +113,9 @@ for perl_file in "$TARGET_FILE3" "$TARGET_FILE4"; do
   fi
 
   echo "=== AFTER $perl_file ==="
-  cat "$perl_file" | grep -E 'my\s+\$(host|db|pass)' || true
+  grep 'my $host' "$perl_file" || true
+  grep 'my $db' "$perl_file" || true
+  grep 'my $pass' "$perl_file" || true
   echo "Successfully updated $perl_file"
 done
 
