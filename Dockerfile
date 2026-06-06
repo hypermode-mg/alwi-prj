@@ -1,6 +1,5 @@
 FROM ubuntu/apache2
 
-# Аргумент сборки: UID пользователя Jenkins на сервере (по умолчанию 1000)
 ARG JENKINS_UID=1000
 
 ENV DEBIAN_FRONTEND=noninteractive
@@ -26,18 +25,15 @@ RUN apt-get update && \
     python3-pip \
     python3-pygal \
     python3-numpy && \
-    # Раскомментируем ru_RU.UTF-8 в locale.gen, не удаляя остальные локали
     sed -i '/ru_RU.UTF-8/s/^#//' /etc/locale.gen && \
     locale-gen ru_RU.UTF-8 && \
     update-locale LANG=ru_RU.UTF-8 && \
-    # Конфиг запрета доступа к скриптам мониторинга
     echo '<Directory /var/www/html/modules/pingit>' > /etc/apache2/conf-available/restrict-pingit.conf && \
     echo '    Require all denied' >> /etc/apache2/conf-available/restrict-pingit.conf && \
     echo '</Directory>' >> /etc/apache2/conf-available/restrict-pingit.conf && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Синхронизируем UID/GID www-data с UID Jenkins (чтобы права на томах работали корректно)
 RUN usermod -u ${JENKINS_UID} www-data && \
     groupmod -g ${JENKINS_UID} www-data
 
