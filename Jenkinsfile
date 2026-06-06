@@ -1,19 +1,20 @@
 pipeline {
     agent { label 'docker_agent' }
 
+
     environment {
+        ENV_FILE=".env"
+        TARGET_FILE1="web/install/step1.php"
+        TARGET_FILE2="web/install/step2.php"
+        TARGET_FILE3="web/modules/pingit/pingit.pl"
+        TARGET_FILE4="web/modules/pingit/fetch.pl"
+        DB_CONFIG_FILE="web/conf/db1776658531.371.php"  # путь к новому файлу
         DOCKER_IMAGE = 'alwi-php:${BUILD_NUMBER}'
         DB_HOST = 'alwi-db'
         DB_PORT = '3306'
         DB_NAME = 'alertsonwings'
         TZ = 'Asia/Yekaterinburg'
         REPO_URL = 'https://github.com/hypermode-mg/alwi-prj'
-        ENV_FILE=".env"
-        TARGET_FILE1="web/install/step1.php"
-        TARGET_FILE2="web/install/step2.php"
-        TARGET_FILE3="web/modules/pingit/pingit.pl"
-        TARGET_FILE4="web/modules/pingit/fetch.pl"
-        DB_CONFIG_FILE="web/conf/db1776658531.371.php"
     }
 
     stages {
@@ -21,7 +22,7 @@ pipeline {
             steps {
                 git(
                     url: "${REPO_URL}",
-                    branch: 'main'  // укажите нужную ветку
+                    branch: 'main'
                 )
             }
         }
@@ -33,6 +34,11 @@ pipeline {
                 credentialsId: 'db-app-credentials',
                 usernameVariable: 'DB_USER',
                 passwordVariable: 'DB_PASS'
+            ),
+            usernamePassword(
+                credentialsId: 'db-root-credentials',
+                usernameVariable: 'ROOT_USER',
+                passwordVariable: 'ROOT_PASSWORD'
             )]) {
                 script {
                     sh '''
@@ -40,6 +46,7 @@ pipeline {
                 echo "DB_USER=${DB_USER}" > $ENV_FILE
                 echo "DB_NAME=${DB_NAME}" >> $ENV_FILE
                 echo "DB_PASS=${DB_PASS}" >> $ENV_FILE
+                echo "DB_ROOT_PASS=${ROOT_PASSWORD}" >> $ENV_FILE
 
                 # Создаём файл конфигурации БД web/conf/db1776658531.371.php
                 mkdir -p web/conf  # создаём директорию, если её нет
@@ -56,7 +63,7 @@ pipeline {
 ?>
 EOF
 
-                echo "Database configuration file created: $DB_CONFIG_FILE"
+                echo "Создан файл конфигурации базы данных: $DB_CONFIG_FILE"
 
                 # Корректируем место поиска libphp в контейнере с apache2 для исправления ошибки
                 sed -i 's|/etc/httpd/modules/|/usr/lib/apache2/modules/|g' "$TARGET_FILE1"
