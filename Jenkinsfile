@@ -173,17 +173,16 @@ EOF
                         // Мы вынуждены использовать --env для паролей, чтобы имена совпадали с docker-compose.yml
                         // (например, DB_ROOT_PASSWORD вместо DB_ROOT_PASS)
                         sh """
-                            echo "Deploying alwi-php (Docker Compose V2)..."
-                            docker compose -f "${DOCKER_COMPOSE_FILE}" \\
-                              up -d --build --force-recreate alwi-php \\
-                              --env DB_PASS="${DB_PASS}" \\
-                              --env DB_USER="${DB_USER}" \\
-                              --env DB_ROOT_PASSWORD="${ROOT_PASSWORD}" \\
-                              --env DB_NAME="${DB_NAME}" \\
-                              --env JENKINS_UID="${JENKINS_UID}" \\
-                              --env JENKINS_GID="${JENKINS_GID}"
-                            echo "Deployment executed."
-                        """
+echo "Deploying alwi-php (Docker Compose V2 confirmed)..."
+docker compose -f "${DOCKER_COMPOSE_FILE}" \\
+  up -d --build --force-recreate alwi-php \\
+  --env DB_PASS="${DB_PASS}" \\
+  --env DB_USER="${DB_USER}" \\
+  --env DB_NAME="${DB_NAME}" \\
+  --env JENKINS_UID="${JENKINS_UID}" \\
+  --env JENKINS_GID="${JENKINS_GID}"
+echo "Deployment executed."
+"""
                     }
                 }
             }
