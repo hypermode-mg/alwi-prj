@@ -6,11 +6,6 @@ FROM ubuntu/apache2
 ARG JENKINS_UID
 ARG JENKINS_GID
 
-ENV DEBIAN_FRONTEND=noninteractive
-ENV LANG=ru_RU.UTF-8
-ENV LANGUAGE=ru_RU.UTF-8
-ENV LC_ALL=ru_RU.UTF-8
-
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     php \
