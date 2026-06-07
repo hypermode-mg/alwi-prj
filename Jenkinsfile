@@ -89,62 +89,69 @@ pipeline {
 EOF
 
                         # --- ПРОВЕРКА СУЩЕСТВОВАНИЯ ФАЙЛОВ ---
-                        for f in "$TARGET_FILE1" "$TARGET_FILE2" "$TARGET_FILE3" "$TARGET_FILE4"; do
+                        for f in "$TARGET_FILE3" "$TARGET_FILE4"; do
                             if [ ! -f "$f" ]; then
                                 echo "CRITICAL: File not found: $f"
-                                ls -la $(dirname "$f") || true
+                                ls -la $(dirname "$f") 2>/dev/null || true
                                 exit 1
                             fi
                         done
 
-                        chmod u+w "$TARGET_FILE1" "$TARGET_FILE2" "$TARGET_FILE3" "$TARGET_FILE4"
+                        chmod u+w "$TARGET_FILE3" "$TARGET_FILE4"
 
-                        # --- ОТЛАДКА: покажи, что реально лежит в файлах ---
+                        # --- ОТЛАДКА: покажем, что реально в файлах ---
                         echo "=== DEBUG: Before patch (fetch.pl) ==="
                         grep -n -E 'host|db|pass' "$TARGET_FILE3" || true
                         echo "=== DEBUG: Before patch (pingit.pl) ==="
                         grep -n -E 'host|db|pass' "$TARGET_FILE4" || true
 
-                        # --- Замены для PHP/HTML ---
-                        sed -i 's|/etc/httpd/modules/|/usr/lib/apache2/modules/|g' "$TARGET_FILE1"
-                        sed -i 's|value="hpinger"|value="alertsonwings"|g' "$TARGET_FILE2"
-                        sed -i 's|value="localhost"|value="alwi-db"|g' "$TARGET_FILE2"
-                        sed -i 's|value="pass"|value="Enter user password"|g' "$TARGET_FILE2"
+                        # --- Замены для PHP/HTML (оставляем как было) ---
+                        [ -f "$TARGET_FILE1" ] && sed -i 's|/etc/httpd/modules/|/usr/lib/apache2/modules/|g' "$TARGET_FILE1"
+                        [ -f "$TARGET_FILE2" ] && {
+                          sed -i 's|value="hpinger"|value="alertsonwings"|g' "$TARGET_FILE2"
+                          sed -i 's|value="localhost"|value="alwi-db"|g' "$TARGET_FILE2"
+                          sed -i 's|value="pass"|value="Enter user password"|g' "$TARGET_FILE2"
+                        }
 
-                        # --- ПРЯМЫЕ ЗАМЕНЫ ПО ТОЧНОМУ ТЕКСТУ (самый надёжный способ) ---
-                        # Формируем строки с нужным форматированием
+                        # --- ФОРМИРУЕМ НОВЫЕ СТРОКИ (с правильными кавычками и синтаксисом) ---
                         NEW_HOST="my \$host = \"${DB_HOST_VAL}\"; #"
                         NEW_DB="my \$db = \"${DB_NAME_VAL}\"; #"
                         NEW_PASS="my \$pass = \$ENV{DB_PASS}; #"
 
-                        # Делаем бэкапы
-                        cp "$TARGET_FILE3" "${TARGET_FILE3}.bak"
-                        cp "$TARGET_FILE4" "${TARGET_FILE4}.bak"
+                        # Исходные строки для точного сравнения
+                        OLD_HOST='my $host = "localhost"; #'
+                        OLD_DB='my $db = "hpinger"; #'
+                        OLD_PASS='my $pass = "pass"; #'
 
-                        # Заменяем точные строки через sed -F (fixed strings), без regex!
-                        # -F говорит sed: "воспринимай шаблон как обычный текст, не как regex"
-                        sed -i -F 'my $host = "localhost"; #' "$NEW_HOST" "$TARGET_FILE3" "$TARGET_FILE4" 2>/dev/null || true
-                        sed -i -F 'my $db = "hpinger"; #' "$NEW_DB" "$TARGET_FILE3" "$TARGET_FILE4" 2>/dev/null || true
-                        sed -i -F 'my $pass = "pass"; #' "$NEW_PASS" "$TARGET_FILE3" "$TARGET_FILE4" 2>/dev/null || true
+                        # --- НАДЁЖНЫЙ ПАТЧ ЧЕРЕЗ while read (без regex, без sed-трюков) ---
+                        for file in "$TARGET_FILE3" "$TARGET_FILE4"; do
+                            tmp="${file}.tmp"
+                            bak="${file}.bak"
+                            cp "$file" "$bak"
+                            
+                            > "$tmp"
+                            while IFS= read -r line; do
+                                if [ "$line" = "$OLD_HOST" ]; then
+                                    echo "$NEW_HOST" >> "$tmp"
+                                elif [ "$line" = "$OLD_DB" ]; then
+                                    echo "$NEW_DB" >> "$tmp"
+                                elif [ "$line" = "$OLD_PASS" ]; then
+                                    echo "$NEW_PASS" >> "$tmp"
+                                else
+                                    echo "$line" >> "$tmp"
+                                fi
+                            done < "$file"
 
-                        # ВАЖНО: если sed -F не поддерживается в вашей версии sed (старый GNU),
-                        # используем безопасный fallback через временный файл и grep-like замену:
-                        if [ $? -ne 0 ] || [ ! -s "${TARGET_FILE3}" ]; then
-                            echo "WARNING: sed -F not supported or failed, using fallback..."
-                            for file in "$TARGET_FILE3" "$TARGET_FILE4"; do
-                                cp "$file" "${file}.tmp"
-                                # Читаем построчно и делаем прямую замену известных строк
-                                while IFS= read -r line; do
-                                    case "$line" in
-                                        'my $host = "localhost"; #') echo "$NEW_HOST";;
-                                        'my $db = "hpinger"; #')   echo "$NEW_DB";;
-                                        'my $pass = "pass"; #')    echo "$NEW_PASS";;
-                                        *) echo "$line";;
-                                    esac
-                                done < "${file}.tmp" > "$file"
-                                rm "${file}.tmp"
-                            done
-                        fi
+                            # Сравниваем, изменилось ли что-то
+                            if diff -q "$file" "$tmp" > /dev/null 2>&1; then
+                                echo "WARNING: No changes made in $file (strings did not match exactly)"
+                                head -n 20 "$file" || true
+                            else
+                                mv "$tmp" "$file"
+                                echo "OK: Patched $file successfully"
+                            fi
+                            rm -f "$tmp"
+                        done
 
                         # --- ОТЛАДКА ПОСЛЕ ---
                         echo "=== DEBUG: After patch (fetch.pl) ==="
