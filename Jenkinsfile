@@ -95,7 +95,7 @@ EOF
 
                             chmod u+w "$TARGET_FILE1" "$TARGET_FILE2" "$TARGET_FILE3" "$TARGET_FILE4"
 
-                            # --- 3. Замены через sed (ИСПРАВЛЕНО: без переменных-паттернов) ---
+                            # --- 3. Замены через sed (ИСПРАВЛЕНО: только одинарные кавычки) ---
                             sed -i 's|/etc/httpd/modules/|/usr/lib/apache2/modules/|g' "$TARGET_FILE1"
                             
                             sed -i 's|value="hpinger"|value="alertsonwings"|g' "$TARGET_FILE2"
@@ -104,23 +104,22 @@ EOF
 
                             echo "DEBUG: Patching DB vars. Host='${DB_HOST_VAL}'"
 
-                            # Прямые команды sed с экранированием спецсимволов для bash+sed
-                            # Экранируем $ как \\$, чтобы bash не подставил переменную, а sed увидел литерал $
-                            # Квадратные скобки и кавычки экранируем минимально, используя разделитель |
+                            # ВАЖНО: используем ТОЛЬКО одинарные кавычки для sed, чтобы bash не трогал $ и *.
+                            # Переменные ${DB_HOST_VAL} подставляем через конкатенацию строк bash.
                             
-                            # Замена host: my $host = 'localhost' -> my $host = 'alwi-db'
-                            # Ищем: my, пробелы, $host, пробелы, =, пробелы, ' или ", localhost, ' или "
-                            sed -i "s|my *\\\\$host *= *['\"]localhost['\"]|my \\$host = '${DB_HOST_VAL}'|g" "$TARGET_FILE3"
-                            sed -i "s|my *\\\\$host *= *['\"]localhost['\"]|my \\$host = '${DB_HOST_VAL}'|g" "$TARGET_FILE4"
+                            # Замена host: my $host = 'localhost' -> my $host = '<значение>'
+                            # Шаблон поиска фиксированный (одинарные кавычки), подстановка значения через bash-конкатенацию
+                            sed -i 's|my *\\$host *= *['"'"']localhost['"'"']|my $host = '"'${DB_HOST_VAL}'"'|g' "$TARGET_FILE3"
+                            sed -i 's|my *\\$host *= *['"'"']localhost['"'"']|my $host = '"'${DB_HOST_VAL}'"'|g' "$TARGET_FILE4"
                             
-                            # Замена db: my $db = 'hpinger' -> my $db = 'alertsonwings'
-                            sed -i "s|my *\\\\$db *= *['\"]hpinger['\"]|my \\$db = '${DB_NAME_VAL}'|g" "$TARGET_FILE3"
-                            sed -i "s|my *\\\\$db *= *['\"]hpinger['\"]|my \\$db = '${DB_NAME_VAL}'|g" "$TARGET_FILE4"
+                            # Замена db: my $db = 'hpinger' -> my $db = '<значение>'
+                            sed -i 's|my *\\$db *= *['"'"']hpinger['"'"']|my $db = '"'${DB_NAME_VAL}'"'|g' "$TARGET_FILE3"
+                            sed -i 's|my *\\$db *= *['"'"']hpinger['"'"']|my $db = '"'${DB_NAME_VAL}'"'|g' "$TARGET_FILE4"
                             
                             # Замена pass: my $pass = 'pass' -> my $pass = $ENV{DB_PASS}
-                            # Обратите внимание: в замене мы НЕ раскрываем ${DB_PASS}, а пишем литерал $ENV{DB_PASS}
-                            sed -i "s|my *\\\\$pass *= *['\"]pass['\"]|my \\$pass = \\\$ENV{DB_PASS}|g" "$TARGET_FILE3"
-                            sed -i "s|my *\\\\$pass *= *['\"]pass['\"]|my \\$pass = \\\$ENV{DB_PASS}|g" "$TARGET_FILE4"
+                            # Здесь мы пишем литерал $ENV{DB_PASS}, никаких переменных bash в замене нет
+                            sed -i 's|my *\\$pass *= *['"'"']pass['"'"']|my $pass = $ENV{DB_PASS}|g' "$TARGET_FILE3"
+                            sed -i 's|my *\\$pass *= *['"'"']pass['"'"']|my $pass = $ENV{DB_PASS}|g' "$TARGET_FILE4"
 
                             grep -n -E 'host|db|pass' "$TARGET_FILE3" || true
                             grep -n -E 'host|db|pass' "$TARGET_FILE4" || true
@@ -129,9 +128,9 @@ EOF
 
                             # --- 4. Синхронизация прав ---
                             export JENKINS_UID_VAL=${JENKINS_UID}
-                            
+                            export JENKINS_GID_VAL=${JENKINS_GID}
                             echo "Setting ownership to UID ${JENKINS_UID_VAL}..."
-                            chown -R ${JENKINS_UID_VAL}:${JENKINS_UID_VAL} web/
+                            chown -R ${JENKINS_UID_VAL}:${JENKINS_GID_VAL} web/
                             chmod -R 755 web/
                             
                             echo "Permissions fixed for UID ${JENKINS_UID_VAL}"
