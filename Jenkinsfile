@@ -147,7 +147,7 @@ EOF
                         export JENKINS_GID=${JENKINS_GID}
                 
                         echo "Deploying alwi-php ONLY (UID=${JENKINS_UID})..."
-                        
+                        docker compose build --no-cache alwi-php
                         docker compose -f "${DOCKER_COMPOSE_FILE}" up -d --build --force-recreate alwi-php
                     '''
                 }
