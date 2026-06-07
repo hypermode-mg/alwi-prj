@@ -39,7 +39,24 @@ pipeline {
                 }
             }
         }
-
+        
+stage('Debug: What Docker sees') {
+    steps {
+        sh '''
+            echo "=== PATH ==="
+            echo $PATH
+            echo "=== docker compose version ==="
+            docker compose version || echo "docker compose not found"
+            echo "=== docker-compose version ==="
+            docker-compose version || echo "docker-compose not found"
+            echo "=== which docker compose ==="
+            which 'docker compose' || echo "not found"
+            echo "=== which docker-compose ==="
+            which docker-compose || echo "not found"
+        '''
+    }
+}
+        
         stage('Modify App Configuration & Deploy') {
             steps {
                 withCredentials([
