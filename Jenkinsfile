@@ -88,9 +88,22 @@ pipeline {
 ?>
 EOF
 
+                        # --- ЖЁСТКАЯ ПРОВЕРКА СУЩЕСТВОВАНИЯ ФАЙЛОВ ---
+                        for f in "$TARGET_FILE1" "$TARGET_FILE2" "$TARGET_FILE3" "$TARGET_FILE4"; do
+                            if [ ! -f "$f" ]; then
+                                echo "ERROR: Expected file not found: $f"
+                                exit 1
+                            fi
+                        done
+
                         chmod u+w "$TARGET_FILE1" "$TARGET_FILE2" "$TARGET_FILE3" "$TARGET_FILE4"
 
-                        # --- 3. Замены через sed ---
+                        # --- Отладочный вывод ПЕРЕД заменами ---
+                        echo "=== DEBUG: Before patch ==="
+                        grep -n -E 'host|db|pass' "$TARGET_FILE3" || true
+                        grep -n -E 'host|db|pass' "$TARGET_FILE4" || true
+
+                        # --- 3. Замены через sed (теперь под двойные кавычки) ---
                         sed -i 's|/etc/httpd/modules/|/usr/lib/apache2/modules/|g' "$TARGET_FILE1"
                         sed -i 's|value="hpinger"|value="alertsonwings"|g' "$TARGET_FILE2"
                         sed -i 's|value="localhost"|value="alwi-db"|g' "$TARGET_FILE2"
@@ -98,14 +111,14 @@ EOF
 
                         echo "DEBUG: Patching DB vars. Host='${DB_HOST_VAL}'"
                         
-                        # Подставляем значения напрямую (для alwi-db / alertsonwings безопасно)
-                        sed -i "s|my *\\$host *= *'localhost'|my \$host = '${DB_HOST_VAL}'|g" "$TARGET_FILE3"
-                        sed -i "s|my *\\$host *= *'localhost'|my \$host = '${DB_HOST_VAL}'|g" "$TARGET_FILE4"
-                        sed -i "s|my *\\$db *= *'hpinger'|my \$db = '${DB_NAME_VAL}'|g" "$TARGET_FILE3"
-                        sed -i "s|my *\\$db *= *'hpinger'|my \$db = '${DB_NAME_VAL}'|g" "$TARGET_FILE4"
-                        sed -i 's|my *\\$pass *= *['"'"']pass['"'"']|my $pass = $ENV{DB_PASS}|g' "$TARGET_FILE3"
-                        sed -i 's|my *\\$pass *= *['"'"']pass['"'"']|my $pass = $ENV{DB_PASS}|g' "$TARGET_FILE4"
+                        # ТОЧНЫЕ шаблоны под ваш fetch.pl / pingit.pl (двойные кавычки!)
+                        sed -i "s|my[[:space:]]*\\$host[[:space:]]*=[[:space:]]*\\\"localhost\\\"|my \\$host = \"${DB_HOST_VAL}\"|g" "$TARGET_FILE3" "$TARGET_FILE4"
+                        sed -i "s|my[[:space:]]*\\$db[[:space:]]*=[[:space:]]*\\\"hpinger\\\"|my \\$db = \"${DB_NAME_VAL}\"|g" "$TARGET_FILE3" "$TARGET_FILE4"
+                        sed -i 's|my *\\$pass *= *"pass"|my $pass = $ENV{DB_PASS}|g' "$TARGET_FILE3"
+                        sed -i 's|my *\\$pass *= *"pass"|my $pass = $ENV{DB_PASS}|g' "$TARGET_FILE4"
 
+                        # --- Отладочный вывод ПОСЛЕ замен ---
+                        echo "=== DEBUG: After patch ==="
                         grep -n -E 'host|db|pass' "$TARGET_FILE3" || true
                         grep -n -E 'host|db|pass' "$TARGET_FILE4" || true
 
