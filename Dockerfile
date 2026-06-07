@@ -35,8 +35,8 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-RUN usermod -u ${JENKINS_UID} www-data && \
-    groupmod -g ${JENKINS_GID} www-data
+RUN if [ -n "${JENKINS_GID}" ]; then groupmod -g "${JENKINS_GID}" www-data || true; fi
+RUN if [ -n "${JENKINS_UID}" ]; then usermod -u "${JENKINS_UID}" www-data || true; fi
 
 RUN ln -sf /usr/bin/python3 /usr/bin/python
 RUN a2enmod rewrite
