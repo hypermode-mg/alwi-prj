@@ -14,9 +14,11 @@ services:
       - alwi-net
     healthcheck:
       test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
-      interval: 5s
+      interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
 
   alwi-php:
     build:
@@ -36,10 +38,8 @@ services:
     networks:
       - alwi-net
     environment:
-      DB_HOST: alwi-db
-      DB_NAME: ${DB_NAME}
-      DB_USER: ${DB_USER}
-      DB_PASSWORD: ${DB_PASS}
+      - TZ=Asia/Yekaterinburg
+      - DB_PASS=${DB_PASS}
 
 networks:
   alwi-net:
