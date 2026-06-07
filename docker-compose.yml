@@ -4,6 +4,7 @@ services:
     container_name: alwi-db
     restart: unless-stopped
     environment:
+      TZ: ${TZ}
       MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASS}
       MARIADB_DATABASE: ${DB_NAME}
       MARIADB_USER: ${DB_USER}
@@ -37,7 +38,7 @@ services:
     networks:
       - alwi-net
     environment:
-      - TZ=Asia/Yekaterinburg
+      - TZ=${TZ}
       - DB_PASS=${DB_PASS}
       - DB_USER=${DB_USER}
       - DB_HOST=${DB_HOST}
