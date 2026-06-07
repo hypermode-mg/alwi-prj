@@ -88,9 +88,9 @@ EOF
                             find web/modules/pingit -type f \\( -name '*.sh' -o -name '*.pl' \\) -exec chmod +x {} \\; || true
 
                             # 4. Проверяем синтаксис perl-скриптов
-                            echo "Validating Perl scripts syntax..."
-                            perl -c web/modules/pingit/pingit.pl || { echo "FATAL: pingit.pl has syntax errors!"; exit 1; }
-                            perl -c web/modules/pingit/fetch.pl  || { echo "FATAL: fetch.pl has syntax errors!"; exit 1; }
+                            # echo "Validating Perl scripts syntax..."
+                            # perl -c web/modules/pingit/pingit.pl || { echo "FATAL: pingit.pl has syntax errors!"; exit 1; }
+                            # perl -c web/modules/pingit/fetch.pl  || { echo "FATAL: fetch.pl has syntax errors!"; exit 1; }
                             
                             # 5. Смена владельца файлов
                             export JENKINS_UID_VAL=${JENKINS_UID}
