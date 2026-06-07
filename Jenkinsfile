@@ -20,17 +20,24 @@ pipeline {
         skipDefaultCheckout true
     }
 
-    stages {
-        stage('Pre-Cleanup & Checkout') {
+            stage('Pre-Cleanup & Checkout') {
             steps {
                 script {
                     sh '''
                         echo "Cleaning workspace..."
+                        
+                        # 1. Если папка web уже есть, сначала меняем владельца на текущего юзера (UID 999),
+                        # чтобы мы могли её удалить. Это решает ошибку Permission denied.
+                        if [ -d "web" ]; then
+                            echo "Fixing ownership for web/ (current UID=${JENKINS_UID})..."
+                            chown -R ${JENKINS_UID}:${JENKINS_UID} web/ || true
+                        fi
+
+                        # 2. Теперь безопасно удаляем и создаём заново
                         rm -rf web
                         mkdir -p web
 
-                        # Останавливаем и удаляем ТОЛЬКО контейнер приложения.
-                        # Базу (alwi-db) НЕ трогаем.
+                        # Останавливаем и удаляем ТОЛЬКО контейнер приложения
                         docker stop alwi-php || true
                         docker rm alwi-php || true
 
