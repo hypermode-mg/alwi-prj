@@ -27,12 +27,11 @@ pipeline {
                     sh '''
                         echo "Cleaning workspace..."
                         
-                        # Просто удаляем старую папку, если есть. Никаких chown перед удалением!
-                        rm -rf web
-                        mkdir -p web
-
                         docker stop alwi-php || true
                         docker rm alwi-php || true
+                        
+                        rm -rf web
+                        mkdir -p web
 
                         git config --global user.email "ci@jenkins.local"
                         git config --global user.name "Jenkins CI"
