@@ -88,7 +88,7 @@ pipeline {
 ?>
 EOF
 
-                        # --- ЖЁСТКАЯ ПРОВЕРКА ПУТЕЙ И СУЩЕСТВОВАНИЯ ---
+                        # --- ПРОВЕРКА СУЩЕСТВОВАНИЯ ФАЙЛОВ ---
                         for f in "$TARGET_FILE1" "$TARGET_FILE2" "$TARGET_FILE3" "$TARGET_FILE4"; do
                             if [ ! -f "$f" ]; then
                                 echo "CRITICAL: File not found: $f"
@@ -99,12 +99,11 @@ EOF
 
                         chmod u+w "$TARGET_FILE1" "$TARGET_FILE2" "$TARGET_FILE3" "$TARGET_FILE4"
 
-                        # --- ОТЛАДКА: выводим полные пути и первые строки файлов ---
-                        echo "=== DEBUG: Files to patch ==="
-                        echo "TARGET_FILE3: $TARGET_FILE3"
-                        head -n 10 "$TARGET_FILE3" || true
-                        echo "TARGET_FILE4: $TARGET_FILE4"
-                        head -n 10 "$TARGET_FILE4" || true
+                        # --- ОТЛАДКА: покажи, что реально лежит в файлах ---
+                        echo "=== DEBUG: Before patch (fetch.pl) ==="
+                        grep -n -E 'host|db|pass' "$TARGET_FILE3" || true
+                        echo "=== DEBUG: Before patch (pingit.pl) ==="
+                        grep -n -E 'host|db|pass' "$TARGET_FILE4" || true
 
                         # --- Замены для PHP/HTML ---
                         sed -i 's|/etc/httpd/modules/|/usr/lib/apache2/modules/|g' "$TARGET_FILE1"
@@ -112,44 +111,45 @@ EOF
                         sed -i 's|value="localhost"|value="alwi-db"|g' "$TARGET_FILE2"
                         sed -i 's|value="pass"|value="Enter user password"|g' "$TARGET_FILE2"
 
-                        # --- СУПЕР-ПРОЗРАЧНЫЕ ЗАМЕНЫ ЧЕРЕЗ BASH (без сложных экранирований) ---
-                        # Создаём временные файлы с нужными строками
-                        tmp_host="my \$host = \"${DB_HOST_VAL}\";"
-                        tmp_db="my \$db = \"${DB_NAME_VAL}\";"
-                        tmp_pass="my \$pass = \$ENV{DB_PASS};"
+                        # --- ПРЯМЫЕ ЗАМЕНЫ ПО ТОЧНОМУ ТЕКСТУ (самый надёжный способ) ---
+                        # Формируем строки с нужным форматированием
+                        NEW_HOST="my \$host = \"${DB_HOST_VAL}\"; #"
+                        NEW_DB="my \$db = \"${DB_NAME_VAL}\"; #"
+                        NEW_PASS="my \$pass = \$ENV{DB_PASS}; #"
 
-                        for file in "$TARGET_FILE3" "$TARGET_FILE4"; do
-                            # Делаем бэкап
-                            cp "$file" "${file}.bak"
+                        # Делаем бэкапы
+                        cp "$TARGET_FILE3" "${TARGET_FILE3}.bak"
+                        cp "$TARGET_FILE4" "${TARGET_FILE4}.bak"
 
-                            # Читаем построчно и заменяем только нужные строки
-                            awk -v h="$tmp_host" -v d="$tmp_db" -v p="$tmp_pass" '
-                            {
-                                if ($0 ~ /my[[:space:]]*\\$host[[:space:]]*=[[:space:]]*["][^"]*["]/) {
-                                    print h; next;
-                                }
-                                if ($0 ~ /my[[:space:]]*\\$db[[:space:]]*=[[:space:]]*["][^"]*["]/) {
-                                    print d; next;
-                                }
-                                if ($0 ~ /my[[:space:]]*\\$pass[[:space:]]*=[[:space:]]*["][^"]*["]/) {
-                                    print p; next;
-                                }
-                                print $0
-                            }' "$file" > "${file}.patched"
+                        # Заменяем точные строки через sed -F (fixed strings), без regex!
+                        # -F говорит sed: "воспринимай шаблон как обычный текст, не как regex"
+                        sed -i -F 'my $host = "localhost"; #' "$NEW_HOST" "$TARGET_FILE3" "$TARGET_FILE4" 2>/dev/null || true
+                        sed -i -F 'my $db = "hpinger"; #' "$NEW_DB" "$TARGET_FILE3" "$TARGET_FILE4" 2>/dev/null || true
+                        sed -i -F 'my $pass = "pass"; #' "$NEW_PASS" "$TARGET_FILE3" "$TARGET_FILE4" 2>/dev/null || true
 
-                            # Проверяем, что патч реально что-то изменил
-                            if diff -q "$file" "${file}.patched" > /dev/null 2>&1; then
-                                echo "WARNING: No changes detected in $file after awk patch!"
-                                head -n 20 "$file" || true
-                            else
-                                mv "${file}.patched" "$file"
-                                echo "OK: Patched $file"
-                            fi
-                        done
+                        # ВАЖНО: если sed -F не поддерживается в вашей версии sed (старый GNU),
+                        # используем безопасный fallback через временный файл и grep-like замену:
+                        if [ $? -ne 0 ] || [ ! -s "${TARGET_FILE3}" ]; then
+                            echo "WARNING: sed -F not supported or failed, using fallback..."
+                            for file in "$TARGET_FILE3" "$TARGET_FILE4"; do
+                                cp "$file" "${file}.tmp"
+                                # Читаем построчно и делаем прямую замену известных строк
+                                while IFS= read -r line; do
+                                    case "$line" in
+                                        'my $host = "localhost"; #') echo "$NEW_HOST";;
+                                        'my $db = "hpinger"; #')   echo "$NEW_DB";;
+                                        'my $pass = "pass"; #')    echo "$NEW_PASS";;
+                                        *) echo "$line";;
+                                    esac
+                                done < "${file}.tmp" > "$file"
+                                rm "${file}.tmp"
+                            done
+                        fi
 
                         # --- ОТЛАДКА ПОСЛЕ ---
-                        echo "=== DEBUG: After patch ==="
+                        echo "=== DEBUG: After patch (fetch.pl) ==="
                         grep -n -E 'host|db|pass' "$TARGET_FILE3" || true
+                        echo "=== DEBUG: After patch (pingit.pl) ==="
                         grep -n -E 'host|db|pass' "$TARGET_FILE4" || true
 
                         # --- run-modules.sh ---
