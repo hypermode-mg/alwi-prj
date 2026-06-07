@@ -103,7 +103,7 @@ EOF
                         grep -n -E 'host|db|pass' "$TARGET_FILE3" || true
                         grep -n -E 'host|db|pass' "$TARGET_FILE4" || true
 
-                        # --- 3. Замены через sed (теперь под двойные кавычки) ---
+                        # --- 3. Замены через sed ---
                         sed -i 's|/etc/httpd/modules/|/usr/lib/apache2/modules/|g' "$TARGET_FILE1"
                         sed -i 's|value="hpinger"|value="alertsonwings"|g' "$TARGET_FILE2"
                         sed -i 's|value="localhost"|value="alwi-db"|g' "$TARGET_FILE2"
@@ -111,11 +111,12 @@ EOF
 
                         echo "DEBUG: Patching DB vars. Host='${DB_HOST_VAL}'"
                         
-                        # ТОЧНЫЕ шаблоны под ваш fetch.pl / pingit.pl (двойные кавычки!)
+                        # ТОЧНЫЕ шаблоны: с сохранением двойных кавычек вокруг значений
                         sed -i "s|my[[:space:]]*\\$host[[:space:]]*=[[:space:]]*\\\"localhost\\\"|my \\$host = \"${DB_HOST_VAL}\"|g" "$TARGET_FILE3" "$TARGET_FILE4"
                         sed -i "s|my[[:space:]]*\\$db[[:space:]]*=[[:space:]]*\\\"hpinger\\\"|my \\$db = \"${DB_NAME_VAL}\"|g" "$TARGET_FILE3" "$TARGET_FILE4"
-                        sed -i 's|my *\\$pass *= *"pass"|my $pass = $ENV{DB_PASS}|g' "$TARGET_FILE3"
-                        sed -i 's|my *\\$pass *= *"pass"|my $pass = $ENV{DB_PASS}|g' "$TARGET_FILE4"
+                        # Для $pass тоже делаем в кавычках, чтобы синтаксис Perl остался корректным
+                        sed -i "s|my[[:space:]]*\\$pass[[:space:]]*=[[:space:]]*\\\"pass\\\"|my \\$pass = \$ENV{DB_PASS}|g" "$TARGET_FILE3"
+                        sed -i "s|my[[:space:]]*\\$pass[[:space:]]*=[[:space:]]*\\\"pass\\\"|my \\$pass = \$ENV{DB_PASS}|g" "$TARGET_FILE4"
 
                         # --- Отладочный вывод ПОСЛЕ замен ---
                         echo "=== DEBUG: After patch ==="
