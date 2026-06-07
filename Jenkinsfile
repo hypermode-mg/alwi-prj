@@ -13,6 +13,7 @@ pipeline {
         DB_NAME = "alertsonwings"
         TZ = "Asia/Yekaterinburg"
         JENKINS_UID = '999'
+        JENKINS_GID = '987'
     }
 
     options {
@@ -28,7 +29,7 @@ pipeline {
                         
                         if [ -d "web" ]; then
                             echo "Fixing ownership for web/ (current UID=${JENKINS_UID})..."
-                            chown -R ${JENKINS_UID}:${JENKINS_UID} web/ || true
+                            chown -R ${JENKINS_UID}:${JENKINS_GID} web/ || true
                         fi
 
                         rm -rf web
