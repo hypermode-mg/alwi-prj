@@ -69,6 +69,7 @@ pipeline {
                             export DB_NAME_VAL="${DB_NAME}"
                             export DB_HOST_VAL="${DB_HOST}"
                             
+                            # --- 1. Генерируем .env файл ---
                             > $ENV_FILE
                             echo "TZ=${TZ}" >> $ENV_FILE
                             echo "DB_USER=${DB_USER}" >> $ENV_FILE
@@ -77,6 +78,7 @@ pipeline {
                             echo "DB_PASS=${DB_PASS}" >> $ENV_FILE
                             chmod 600 $ENV_FILE
 
+                            # --- 2. Генерируем PHP конфиг БД ---
                             mkdir -p web/conf
                             cat > $DB_CONFIG_FILE <<EOF
 <?php return array (
@@ -93,31 +95,48 @@ EOF
 
                             chmod u+w "$TARGET_FILE1" "$TARGET_FILE2" "$TARGET_FILE3" "$TARGET_FILE4"
 
+                            # --- 3. Замены через sed (ИСПРАВЛЕННАЯ ВЕРСИЯ) ---
+                            # Выносим паттерны в переменные, чтобы не ломать кавычки в одной длинной строке
+                            
                             sed -i 's|/etc/httpd/modules/|/usr/lib/apache2/modules/|g' "$TARGET_FILE1"
+                            
                             sed -i 's|value="hpinger"|value="alertsonwings"|g' "$TARGET_FILE2"
                             sed -i 's|value="localhost"|value="alwi-db"|g' "$TARGET_FILE2"
                             sed -i 's|value="pass"|value="Enter user password"|g' "$TARGET_FILE2"
 
                             echo "DEBUG: Patching DB vars. Host='${DB_HOST_VAL}'"
 
-                            sed -i 's|my *\\\$host *= *["'\'']localhost["'\'']|my \$host = "'${DB_HOST_VAL}'"|g' "$TARGET_FILE3"
-                            sed -i 's|my *\\\$host *= *["'\'']localhost["'\'']|my \$host = "'${DB_HOST_VAL}'"|g' "$TARGET_FILE4"
+                            # Формируем безопасные паттерны для Perl/Perl-like синтаксиса в sed
+                            # Важно: экранируем только то, что нужно для sed, не добавляя лишнего для bash
+                            HOST_PATTERN="my *\\\$host *= *['\"]localhost['\"]"
+                            DB_PATTERN="my *\\\$db *= *['\"]hpinger['\"]"
+                            PASS_PATTERN="my *\\\$pass *= *['\"]pass['\"]"
+
+                            REPLACE_HOST="my \$host = '${DB_HOST_VAL}'"
+                            REPLACE_DB="my \$db = '${DB_NAME_VAL}'"
+                            REPLACE_PASS="my \$pass = \$ENV{DB_PASS}"
+
+                            # Выполняем замены. Используем | как разделитель, чтобы не экранировать слэши
+                            sed -i "s|${HOST_PATTERN}|${REPLACE_HOST}|g" "$TARGET_FILE3"
+                            sed -i "s|${HOST_PATTERN}|${REPLACE_HOST}|g" "$TARGET_FILE4"
                             
-                            sed -i 's|my *\\\$db *= *["'\'']hpinger["'\'']|my \$db = "'${DB_NAME_VAL}'"|g' "$TARGET_FILE3"
-                            sed -i 's|my *\\\$db *= *["'\'']hpinger["'\'']|my \$db = "'${DB_NAME_VAL}'"|g' "$TARGET_FILE4"
+                            sed -i "s|${DB_PATTERN}|${REPLACE_DB}|g" "$TARGET_FILE3"
+                            sed -i "s|${DB_PATTERN}|${REPLACE_DB}|g" "$TARGET_FILE4"
                             
-                            sed -i 's|my *\\\$pass *= *["'\'']]pass["'\'']|my \$pass = \$ENV{DB_PASS}|g' "$TARGET_FILE3"
-                            sed -i 's|my *\\\$pass *= *["'\']]pass["'\'']|my \$pass = \$ENV{DB_PASS}|g' "$TARGET_FILE4"
+                            sed -i "s|${PASS_PATTERN}|${REPLACE_PASS}|g" "$TARGET_FILE3"
+                            sed -i "s|${PASS_PATTERN}|${REPLACE_PASS}|g" "$TARGET_FILE4"
 
                             grep -n -E 'host|db|pass' "$TARGET_FILE3" || true
                             grep -n -E 'host|db|pass' "$TARGET_FILE4" || true
 
                             cp run-modules.sh web/modules/pingit/
 
+                            # --- 4. Синхронизация прав ---
                             export JENKINS_UID_VAL=${JENKINS_UID}
+                            export JENKINS_GID_VAL=${JENKINS_GID}
                             
                             echo "Setting ownership to UID ${JENKINS_UID_VAL}..."
-                            chown -R ${JENKINS_UID_VAL}:${JENKINS_UID_VAL} web/
+                            chown -R ${JENKINS_UID_VAL}:${JENKINS_GID_VAL} web/
                             chmod -R 755 web/
                             
                             echo "Permissions fixed for UID ${JENKINS_UID_VAL}"
@@ -126,6 +145,7 @@ EOF
                 }
             }
         }
+
 
         stage('Deploy alwi-php only') {
             steps {
