@@ -22,8 +22,9 @@ services:
     build:
       context: .
       args:
-        JENKINS_UID: "${JENKINS_UID}"
-        JENKINS_GID: "${JENKINS_GID}"
+      args:
+        JENKINS_UID: "999"
+        JENKINS_GID: "987"
     container_name: alwi-php
     restart: unless-stopped
     depends_on:
