@@ -99,7 +99,7 @@ EOF
 
                         chmod u+w "$TARGET_FILE3" "$TARGET_FILE4"
 
-                        # --- ОТЛАДКА: покажем, что реально в файлах ---
+                        # --- ОТЛАДКА ДО (покажем, что реально в файлах) ---
                         echo "=== DEBUG: Before patch (fetch.pl) ==="
                         grep -n -E 'host|db|pass' "$TARGET_FILE3" || true
                         echo "=== DEBUG: Before patch (pingit.pl) ==="
@@ -113,45 +113,16 @@ EOF
                           sed -i 's|value="pass"|value="Enter user password"|g' "$TARGET_FILE2"
                         }
 
-                        # --- ФОРМИРУЕМ НОВЫЕ СТРОКИ (с правильными кавычками и синтаксисом) ---
-                        NEW_HOST="my \$host = \"${DB_HOST_VAL}\"; #"
-                        NEW_DB="my \$db = \"${DB_NAME_VAL}\"; #"
-                        NEW_PASS="my \$pass = \$ENV{DB_PASS}; #"
-
-                        # Исходные строки для точного сравнения
-                        OLD_HOST='my $host = "localhost"; #'
-                        OLD_DB='my $db = "hpinger"; #'
-                        OLD_PASS='my $pass = "pass"; #'
-
-                        # --- НАДЁЖНЫЙ ПАТЧ ЧЕРЕЗ while read (без regex, без sed-трюков) ---
-                        for file in "$TARGET_FILE3" "$TARGET_FILE4"; do
-                            tmp="${file}.tmp"
-                            bak="${file}.bak"
-                            cp "$file" "$bak"
-                            
-                            > "$tmp"
-                            while IFS= read -r line; do
-                                if [ "$line" = "$OLD_HOST" ]; then
-                                    echo "$NEW_HOST" >> "$tmp"
-                                elif [ "$line" = "$OLD_DB" ]; then
-                                    echo "$NEW_DB" >> "$tmp"
-                                elif [ "$line" = "$OLD_PASS" ]; then
-                                    echo "$NEW_PASS" >> "$tmp"
-                                else
-                                    echo "$line" >> "$tmp"
-                                fi
-                            done < "$file"
-
-                            # Сравниваем, изменилось ли что-то
-                            if diff -q "$file" "$tmp" > /dev/null 2>&1; then
-                                echo "WARNING: No changes made in $file (strings did not match exactly)"
-                                head -n 20 "$file" || true
-                            else
-                                mv "$tmp" "$file"
-                                echo "OK: Patched $file successfully"
-                            fi
-                            rm -f "$tmp"
-                        done
+                        # --- ПРЯМОЙ ПЕРЕНОС ТВОЕГО sed, НО С ПРАВИЛЬНЫМ ЭКРАНИРОВАНИЕМ ДЛЯ JENKINS ---
+                        # Внимание: в Jenkinsfile внутри sh '''...''' каждый слэш для bash нужно удвоить (\\),
+                        # а каждый $ для bash нужно защитить (\\\$), чтобы Groovy его не съел.
+                        
+                        sed -i "s/my \\\\$host = \"localhost\"/my \\\\$host = \"${DB_HOST_VAL}\"/g" "$TARGET_FILE3"
+                        sed -i "s/my \\\\$host = \"localhost\"/my \\\\$host = \"${DB_HOST_VAL}\"/g" "$TARGET_FILE4"
+                        sed -i "s/my \\\\$db = \"hpinger\"/my \\\\$db = \"${DB_NAME_VAL}\"/g" "$TARGET_FILE3"
+                        sed -i "s/my \\\\$db = \"hpinger\"/my \\\\$db = \"${DB_NAME_VAL}\"/g" "$TARGET_FILE4"
+                        sed -i "s/my \\\\$pass = \"pass\"/my \\\\$pass = \\\\$ENV\\{DB_PASS\\}/g" "$TARGET_FILE3"
+                        sed -i "s/my \\\\$pass = \"pass\"/my \\\\$pass = \\\\$ENV\\{DB_PASS\\}/g" "$TARGET_FILE4"
 
                         # --- ОТЛАДКА ПОСЛЕ ---
                         echo "=== DEBUG: After patch (fetch.pl) ==="
@@ -169,7 +140,7 @@ EOF
 
                         # --- Права ---
                         export JENKINS_UID_VAL=${JENKINS_UID}
-                        export JENKINS_GID_VAL=${JENKINS_GID}
+                        export JENKINS_GID_VAL=${JENKINS_GID_VAL}
                         chown -R ${JENKINS_UID_VAL}:${JENKINS_GID_VAL} web/
 '''
                     }
