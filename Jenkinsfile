@@ -55,17 +55,20 @@ pipeline {
                     )
                 ]) {
                     script {
+                        // --- Часть 1: Подготовка файлов и ENV_FILE ---
                         sh '''
                             export DB_NAME_VAL="${DB_NAME}"
                             export DB_HOST_VAL="${DB_HOST}"
                             
                             > $ENV_FILE
+                            # Пишем в .env только то, что нужно для PHP/других скриптов
                             echo "TZ=${TZ}" >> $ENV_FILE
                             echo "DB_USER=${DB_USER}" >> $ENV_FILE
                             echo "DB_NAME=${DB_NAME_VAL}" >> $ENV_FILE
                             echo "DB_ROOT_PASS=${ROOT_PASSWORD}" >> $ENV_FILE
                             echo "DB_PASS=${DB_PASS}" >> $ENV_FILE
                             chmod 600 $ENV_FILE
+                            
                             cp web/config.php.default web/config.php
                             mkdir -p web/conf
                             cat > $DB_CONFIG_FILE <<EOF
@@ -126,7 +129,7 @@ EOF
                                     head -n 20 "$file" || true
                                 else
                                     mv "$tmp" "$file"
-                                    echo "OK: Patched $file successfully (lines 9,12,13 replaced)"
+                                    echo "OK: Patched $file successfully"
                                 fi
                                 rm -f "$tmp"
                             done
@@ -148,9 +151,12 @@ EOF
                             chown -R ${JENKINS_UID_VAL}:${JENKINS_GID_VAL} web/
                         '''
 
-                        // ИСПРАВЛЕННАЯ КОМАНДА: используем --env вместо -e для docker compose (V2)
+                        // --- Часть 2: Деплой (ИСПРАВЛЕНО ПОД ТВОЮ ВЕРСИЮ) ---
+                        // Используем 'docker compose' (без дефиса) и '--env' (так как это V2)
+                        // Мы вынуждены использовать --env для паролей, чтобы имена совпадали с docker-compose.yml
+                        // (например, DB_ROOT_PASSWORD вместо DB_ROOT_PASS)
                         sh """
-                            echo "Deploying alwi-php..."
+                            echo "Deploying alwi-php (Docker Compose V2)..."
                             docker compose -f "${DOCKER_COMPOSE_FILE}" \\
                               up -d --build --force-recreate alwi-php \\
                               --env DB_PASS="${DB_PASS}" \\
