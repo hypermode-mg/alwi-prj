@@ -159,23 +159,24 @@ EOF
             }
         }
 
-
         stage('Deploy alwi-php only') {
             steps {
                 script {
-                    sh '''
-                        export DB_PASS="${DB_PASS}"
-                        export DB_USER="${DB_USER}"
-                        export DB_ROOT_PASSWORD="${ROOT_PASSWORD}"
-                        export DB_NAME="${DB_NAME}"
+                    sh """
+                        echo "Deploying alwi-php..."
                         
-                        export JENKINS_UID=${JENKINS_UID}
-                        export JENKINS_GID=${JENKINS_GID}
-                
-                        echo "Deploying alwi-php ONLY (UID=${JENKINS_UID})..."
-
-                        docker compose -f "${DOCKER_COMPOSE_FILE}" up -d --build --force-recreate alwi-php
-                    '''
+                        # Явно передаём переменные в Docker Compose через -e
+                        docker compose -f "${DOCKER_COMPOSE_FILE}" \\
+                          up -d --build --force-recreate alwi-php \\
+                          -e DB_PASS="${DB_PASS}" \\
+                          -e DB_USER="${DB_USER}" \\
+                          -e DB_ROOT_PASSWORD="${ROOT_PASSWORD}" \\
+                          -e DB_NAME="${DB_NAME}" \\
+                          -e JENKINS_UID="${JENKINS_UID}" \\
+                          -e JENKINS_GID="${JENKINS_GID}"
+                          
+                        echo "Deployment command executed."
+                    """
                 }
             }
         }
