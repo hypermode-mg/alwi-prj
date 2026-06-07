@@ -39,6 +39,10 @@ services:
     environment:
       - TZ=Asia/Yekaterinburg
       - DB_PASS=${DB_PASS}
+      - DB_USER=${DB_USER}
+      - DB_HOST=${DB_HOST}
+      - DB_NAME=${DB_NAME}
+      - DB_PORT=3306
 
 networks:
   alwi-net:
