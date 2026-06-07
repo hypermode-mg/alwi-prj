@@ -12,7 +12,6 @@ pipeline {
         DB_HOST = "alwi-db"
         DB_NAME = "alertsonwings"
         TZ = "Asia/Yekaterinburg"
-        // Жёстко ставим UID 999, так как вы прислали вывод id: uid=999(jenkins)
         JENKINS_UID = '999'
     }
 
@@ -20,24 +19,21 @@ pipeline {
         skipDefaultCheckout true
     }
 
-            stage('Pre-Cleanup & Checkout') {
+    stages {
+        stage('Pre-Cleanup & Checkout') {
             steps {
                 script {
                     sh '''
                         echo "Cleaning workspace..."
                         
-                        # 1. Если папка web уже есть, сначала меняем владельца на текущего юзера (UID 999),
-                        # чтобы мы могли её удалить. Это решает ошибку Permission denied.
                         if [ -d "web" ]; then
                             echo "Fixing ownership for web/ (current UID=${JENKINS_UID})..."
                             chown -R ${JENKINS_UID}:${JENKINS_UID} web/ || true
                         fi
 
-                        # 2. Теперь безопасно удаляем и создаём заново
                         rm -rf web
                         mkdir -p web
 
-                        # Останавливаем и удаляем ТОЛЬКО контейнер приложения
                         docker stop alwi-php || true
                         docker rm alwi-php || true
 
@@ -72,7 +68,6 @@ pipeline {
                             export DB_NAME_VAL="${DB_NAME}"
                             export DB_HOST_VAL="${DB_HOST}"
                             
-                            # --- 1. Генерируем .env файл ---
                             > $ENV_FILE
                             echo "TZ=${TZ}" >> $ENV_FILE
                             echo "DB_USER=${DB_USER}" >> $ENV_FILE
@@ -81,7 +76,6 @@ pipeline {
                             echo "DB_PASS=${DB_PASS}" >> $ENV_FILE
                             chmod 600 $ENV_FILE
 
-                            # --- 2. Генерируем PHP конфиг БД ---
                             mkdir -p web/conf
                             cat > $DB_CONFIG_FILE <<EOF
 <?php return array (
@@ -98,7 +92,6 @@ EOF
 
                             chmod u+w "$TARGET_FILE1" "$TARGET_FILE2" "$TARGET_FILE3" "$TARGET_FILE4"
 
-                            # --- 3. Надежные замены через sed ---
                             sed -i 's|/etc/httpd/modules/|/usr/lib/apache2/modules/|g' "$TARGET_FILE1"
                             sed -i 's|value="hpinger"|value="alertsonwings"|g' "$TARGET_FILE2"
                             sed -i 's|value="localhost"|value="alwi-db"|g' "$TARGET_FILE2"
@@ -120,10 +113,6 @@ EOF
 
                             cp run-modules.sh web/modules/pingit/
 
-                            # --- 4. Синхронизация прав (КРИТИЧЕСКИ ВАЖНО) ---
-                            # Мы знаем, что на хосте пользователь jenkins имеет UID 999.
-                            # В Dockerfile мы сделаем usermod -u 999 www-data.
-                            # Поэтому файлы на хосте должны принадлежать UID 999.
                             export JENKINS_UID_VAL=${JENKINS_UID}
                             
                             echo "Setting ownership to UID ${JENKINS_UID_VAL}..."
@@ -146,13 +135,10 @@ EOF
                         export DB_ROOT_PASSWORD="${ROOT_PASSWORD}"
                         export DB_NAME="${DB_NAME}"
                         
-                        # Передаем наш точный UID (999) в сборку
                         export JENKINS_UID=${JENKINS_UID}
 
                         echo "Deploying alwi-php ONLY (UID=${JENKINS_UID})..."
                         
-                        # Поднимаем/пересоздаем только alwi-php. 
-                        # alwi-db остается нетронутым.
                         docker compose -f "${DOCKER_COMPOSE_FILE}" up -d --build --force-recreate alwi-php
                     '''
                 }
@@ -193,7 +179,6 @@ EOF
                 sh '''
                     docker stop alwi-php || true
                     docker rm alwi-php || true
-                    # Базу НЕ трогаем
                 '''
             }
         }
