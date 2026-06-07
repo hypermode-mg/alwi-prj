@@ -40,7 +40,8 @@ pipeline {
             }
         }
         
-        stage('Modify App Configuration & Deploy') {
+        // --- НОВЫЙ ЭТАП: Конфигурация и подготовка секретов ---
+        stage('Prepare App Configuration & Secrets') {
             steps {
                 withCredentials([
                     usernamePassword(
@@ -55,13 +56,12 @@ pipeline {
                     )
                 ]) {
                     script {
-                        // --- Часть 1: Подготовка файлов и ENV_FILE ---
                         sh '''
                             export DB_NAME_VAL="${DB_NAME}"
                             export DB_HOST_VAL="${DB_HOST}"
                             
+                            # 1. Создаем чистый .env файл с нужными переменными
                             > $ENV_FILE
-                            # Пишем в .env только то, что нужно для PHP/других скриптов
                             echo "TZ=${TZ}" >> $ENV_FILE
                             echo "DB_USER=${DB_USER}" >> $ENV_FILE
                             echo "DB_NAME=${DB_NAME_VAL}" >> $ENV_FILE
@@ -69,6 +69,7 @@ pipeline {
                             echo "DB_PASS=${DB_PASS}" >> $ENV_FILE
                             chmod 600 $ENV_FILE
                             
+                            # 2. Копируем конфиги приложения
                             cp web/config.php.default web/config.php
                             mkdir -p web/conf
                             cat > $DB_CONFIG_FILE <<EOF
@@ -84,6 +85,7 @@ pipeline {
 ?>
 EOF
 
+                            # 3. Проверяем наличие файлов для патчинга
                             for f in "$TARGET_FILE3" "$TARGET_FILE4"; do
                                 if [ ! -f "$f" ]; then
                                     echo "CRITICAL: File not found: $f"
@@ -94,11 +96,13 @@ EOF
 
                             chmod u+w "$TARGET_FILE3" "$TARGET_FILE4"
 
+                            # 4. Отладочный вывод (до патчинга)
                             echo "=== DEBUG: Before patch (fetch.pl) ==="
                             head -n 15 "$TARGET_FILE3" | tail -n 7 || true
                             echo "=== DEBUG: Before patch (pingit.pl) ==="
                             head -n 15 "$TARGET_FILE4" | tail -n 7 || true
 
+                            # 5. Простые замены в PHP файлах
                             [ -f "$TARGET_FILE1" ] && sed -i 's|/etc/httpd/modules/|/usr/lib/apache2/modules/|g' "$TARGET_FILE1"
                             [ -f "$TARGET_FILE2" ] && {
                               sed -i 's|value="hpinger"|value="alertsonwings"|g' "$TARGET_FILE2"
@@ -106,6 +110,7 @@ EOF
                               sed -i 's|value="pass"|value="Enter user password"|g' "$TARGET_FILE2"
                             }
 
+                            # 6. Сложный патчинг Perl файлов (строки 9, 12, 13)
                             for file in "$TARGET_FILE3" "$TARGET_FILE4"; do
                                 tmp="${file}.tmp"
                                 cp "$file" "${file}.bak"
@@ -134,11 +139,13 @@ EOF
                                 rm -f "$tmp"
                             done
 
+                            # 7. Отладочный вывод (после патчинга)
                             echo "=== DEBUG: After patch (fetch.pl) ==="
                             head -n 15 "$TARGET_FILE3" | tail -n 7 || true
                             echo "=== DEBUG: After patch (pingit.pl) ==="
                             head -n 15 "$TARGET_FILE4" | tail -n 7 || true
 
+                            # 8. Копирование run-modules.sh и права доступа
                             if [ ! -f run-modules.sh ]; then
                                 echo "ERROR: run-modules.sh not found!"
                                 exit 1
@@ -146,23 +153,28 @@ EOF
                             cp run-modules.sh web/modules/pingit/
                             find web/modules/pingit -type f \\( -name '*.sh' -o -name '*.pl' \\) -exec chmod +x {} \\; || true
 
+                            # 9. Смена владельца файлов
                             export JENKINS_UID_VAL=${JENKINS_UID}
                             export JENKINS_GID_VAL=${JENKINS_GID}
                             chown -R ${JENKINS_UID_VAL}:${JENKINS_GID_VAL} web/
                         '''
+                    }
+                }
+            }
+        }
 
-                        // --- Часть 2: Деплой (ИСПРАВЛЕНО ПОД ТВОЮ ВЕРСИЮ) ---
-                        // Используем 'docker compose' (без дефиса) и '--env' (так как это V2)
-                        // Мы вынуждены использовать --env для паролей, чтобы имена совпадали с docker-compose.yml
-                        // (например, DB_ROOT_PASSWORD вместо DB_ROOT_PASS)
-                        sh """
-echo "Deploying alwi-php (Docker Compose V2 confirmed)..."
+        // --- НОВЫЙ ЭТАП: Деплой (чистый, без секретов) ---
+        stage('Deploy Application') {
+            steps {
+                script {
+                    // Здесь нет withCredentials! Секреты уже в .env
+                    sh """
+echo "Deploying alwi-php (Docker Compose V2 via env-file)..."
 docker compose -f "${DOCKER_COMPOSE_FILE}" \\
   --env-file "${ENV_FILE}" \\
   up -d --build --force-recreate alwi-php
 echo "Deployment executed."
 """
-                    }
                 }
             }
         }
