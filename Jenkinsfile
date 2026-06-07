@@ -71,7 +71,7 @@ pipeline {
                         echo "DB_ROOT_PASS=${ROOT_PASSWORD}" >> $ENV_FILE
                         echo "DB_PASS=${DB_PASS}" >> $ENV_FILE
                         chmod 600 $ENV_FILE
-
+                        cp web/config.php.default web/config.php
                         mkdir -p web/conf
                         cat > $DB_CONFIG_FILE <<EOF
 <?php return array (
