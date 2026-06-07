@@ -27,11 +27,7 @@ pipeline {
                     sh '''
                         echo "Cleaning workspace..."
                         
-                        if [ -d "web" ]; then
-                            echo "Fixing ownership for web/ (current UID=${JENKINS_UID})..."
-                            chown -R ${JENKINS_UID}:${JENKINS_GID} web/ || true
-                        fi
-
+                        # Просто удаляем старую папку, если есть. Никаких chown перед удалением!
                         rm -rf web
                         mkdir -p web
 
