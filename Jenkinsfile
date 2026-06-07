@@ -52,14 +52,12 @@ pipeline {
                 ]) {
                     script {
                         sh '''
-                            export DB_NAME_VAL="${DB_NAME}"
-                            export DB_HOST_VAL="${DB_HOST}"
-                            
                             # 1. Создаем чистый .env файл с нужными переменными
                             cat > "$ENV_FILE" <<EOF
 TZ=${TZ}
+DB_HOST=${DB_HOST}
 DB_USER=${DB_USER}
-DB_NAME=${DB_NAME_VAL}
+DB_NAME=${DB_NAME}
 DB_ROOT_PASS=${ROOT_PASSWORD}
 DB_PASS=${DB_PASS}
 EOF
@@ -72,10 +70,10 @@ EOF
 <?php return array (
   'enabled' => 1,
   'srvname' => 'SuperMonitoring',
-  'db' => '${DB_NAME_VAL}',
+  'db' => '${DB_NAME}',
   'user' => '${DB_USER}',
   'pass' => '${DB_PASS}',
-  'address' => '${DB_HOST_VAL}',
+  'address' => '${DB_HOST}',
   'srvdbtype' => '0',
 );
 ?>
@@ -89,7 +87,12 @@ EOF
                             cp run-modules.sh web/modules/pingit/
                             find web/modules/pingit -type f \\( -name '*.sh' -o -name '*.pl' \\) -exec chmod +x {} \\; || true
 
-                            # 4. Смена владельца файлов
+                            # 4. Проверяем синтаксис perl-скриптов
+                            echo "Validating Perl scripts syntax..."
+                            perl -c web/modules/pingit/pingit.pl || { echo "FATAL: pingit.pl has syntax errors!"; exit 1; }
+                            perl -c web/modules/pingit/fetch.pl  || { echo "FATAL: fetch.pl has syntax errors!"; exit 1; }
+                            
+                            # 5. Смена владельца файлов
                             export JENKINS_UID_VAL=${JENKINS_UID}
                             export JENKINS_GID_VAL=${JENKINS_GID}
                             chown -R ${JENKINS_UID_VAL}:${JENKINS_GID_VAL} web/
