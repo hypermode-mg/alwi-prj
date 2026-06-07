@@ -90,7 +90,7 @@ EOF
 
                         chmod u+w "$TARGET_FILE1" "$TARGET_FILE2" "$TARGET_FILE3" "$TARGET_FILE4"
 
-                        # --- 3. Замены через sed (БЕЗ лишнего экранирования) ---
+                        # --- 3. Замены через sed ---
                         sed -i 's|/etc/httpd/modules/|/usr/lib/apache2/modules/|g' "$TARGET_FILE1"
                         sed -i 's|value="hpinger"|value="alertsonwings"|g' "$TARGET_FILE2"
                         sed -i 's|value="localhost"|value="alwi-db"|g' "$TARGET_FILE2"
@@ -98,9 +98,7 @@ EOF
 
                         echo "DEBUG: Patching DB vars. Host='${DB_HOST_VAL}'"
                         
-                        # Убрали опасные конструкции с экранированием через sed.
-                        # Если DB_HOST/DB_NAME гарантированно без спецсимволов (& / \),
-                        # то можно подставлять напрямую в sed:
+                        # Подставляем значения напрямую (для alwi-db / alertsonwings безопасно)
                         sed -i "s|my *\\$host *= *'localhost'|my \$host = '${DB_HOST_VAL}'|g" "$TARGET_FILE3"
                         sed -i "s|my *\\$host *= *'localhost'|my \$host = '${DB_HOST_VAL}'|g" "$TARGET_FILE4"
                         sed -i "s|my *\\$db *= *'hpinger'|my \$db = '${DB_NAME_VAL}'|g" "$TARGET_FILE3"
