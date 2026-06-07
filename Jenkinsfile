@@ -40,23 +40,6 @@ pipeline {
             }
         }
         
-stage('Debug: What Docker sees') {
-    steps {
-        sh '''
-            echo "=== PATH ==="
-            echo $PATH
-            echo "=== docker compose version ==="
-            docker compose version || echo "docker compose not found"
-            echo "=== docker-compose version ==="
-            docker-compose version || echo "docker-compose not found"
-            echo "=== which docker compose ==="
-            which 'docker compose' || echo "not found"
-            echo "=== which docker-compose ==="
-            which docker-compose || echo "not found"
-        '''
-    }
-}
-        
         stage('Modify App Configuration & Deploy') {
             steps {
                 withCredentials([
@@ -175,12 +158,8 @@ EOF
                         sh """
 echo "Deploying alwi-php (Docker Compose V2 confirmed)..."
 docker compose -f "${DOCKER_COMPOSE_FILE}" \\
-  up -d --build --force-recreate alwi-php \\
-  --env DB_PASS="${DB_PASS}" \\
-  --env DB_USER="${DB_USER}" \\
-  --env DB_NAME="${DB_NAME}" \\
-  --env JENKINS_UID="${JENKINS_UID}" \\
-  --env JENKINS_GID="${JENKINS_GID}"
+  --env-file "${ENV_FILE}" \\
+  up -d --build --force-recreate alwi-php
 echo "Deployment executed."
 """
                     }
