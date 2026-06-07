@@ -64,6 +64,7 @@ pipeline {
                         export DB_NAME_VAL="${DB_NAME}"
                         export DB_HOST_VAL="${DB_HOST}"
                         
+                        # --- 1. Генерируем .env ---
                         > $ENV_FILE
                         echo "TZ=${TZ}" >> $ENV_FILE
                         echo "DB_USER=${DB_USER}" >> $ENV_FILE
@@ -72,6 +73,7 @@ pipeline {
                         echo "DB_PASS=${DB_PASS}" >> $ENV_FILE
                         chmod 600 $ENV_FILE
 
+                        # --- 2. Генерируем PHP конфиг БД ---
                         mkdir -p web/conf
                         cat > $DB_CONFIG_FILE <<EOF
 <?php return array (
@@ -86,6 +88,7 @@ pipeline {
 ?>
 EOF
 
+                        # --- ПРОВЕРКА ФАЙЛОВ ---
                         for f in "$TARGET_FILE3" "$TARGET_FILE4"; do
                             if [ ! -f "$f" ]; then
                                 echo "CRITICAL: File not found: $f"
@@ -96,11 +99,13 @@ EOF
 
                         chmod u+w "$TARGET_FILE3" "$TARGET_FILE4"
 
+                        # --- ОТЛАДКА ДО (обычный grep) ---
                         echo "=== DEBUG: Before patch (fetch.pl) ==="
                         grep -n -E 'host|db|pass' "$TARGET_FILE3" || true
                         echo "=== DEBUG: Before patch (pingit.pl) ==="
                         grep -n -E 'host|db|pass' "$TARGET_FILE4" || true
 
+                        # --- ЗАМЕНЫ ДЛЯ PHP/HTML (оставляем как было) ---
                         [ -f "$TARGET_FILE1" ] && sed -i 's|/etc/httpd/modules/|/usr/lib/apache2/modules/|g' "$TARGET_FILE1"
                         [ -f "$TARGET_FILE2" ] && {
                           sed -i 's|value="hpinger"|value="alertsonwings"|g' "$TARGET_FILE2"
@@ -108,18 +113,46 @@ EOF
                           sed -i 's|value="pass"|value="Enter user password"|g' "$TARGET_FILE2"
                         }
 
-                        sed -i "s/my \\\\$host = \"localhost\"/my \\\\$host = \"${DB_HOST_VAL}\"/g" "$TARGET_FILE3"
-                        sed -i "s/my \\\\$host = \"localhost\"/my \\\\$host = \"${DB_HOST_VAL}\"/g" "$TARGET_FILE4"
-                        sed -i "s/my \\\\$db = \"hpinger\"/my \\\\$db = \"${DB_NAME_VAL}\"/g" "$TARGET_FILE3"
-                        sed -i "s/my \\\\$db = \"hpinger\"/my \\\\$db = \"${DB_NAME_VAL}\"/g" "$TARGET_FILE4"
-                        sed -i "s/my \\\\$pass = \"pass\"/my \\\\$pass = \\\\$ENV\\{DB_PASS\\}/g" "$TARGET_FILE3"
-                        sed -i "s/my \\\\$pass = \"pass\"/my \\\\$pass = \\\\$ENV\\{DB_PASS\\}/g" "$TARGET_FILE4"
+                        # --- СУПЕРНАДЁЖНАЯ ЗАМЕНА (по подстроке, игнорирует пробелы и ^M) ---
+                        for file in "$TARGET_FILE3" "$TARGET_FILE4"; do
+                            tmp="${file}.tmp"
+                            cp "$file" "${file}.bak"
+                            > "$tmp"
 
+                            while IFS= read -r line; do
+                                # Убираем возможный CR (^M) в конце строки для сравнения
+                                clean_line="${line%$'\r'}"
+
+                                if [[ "$clean_line" == *'my $host = "localhost"'* ]]; then
+                                    echo "my \$host = \"${DB_HOST_VAL}\"; #" >> "$tmp"
+                                elif [[ "$clean_line" == *'my $db = "hpinger"'* ]]; then
+                                    echo "my \$db = \"${DB_NAME_VAL}\"; #" >> "$tmp"
+                                elif [[ "$clean_line" == *'my $pass = "pass"'* ]]; then
+                                    echo "my \$pass = \$ENV{DB_PASS}; #" >> "$tmp"
+                                else
+                                    # Если строка не совпадает — пишем как есть (в оригинале)
+                                    echo "$line" >> "$tmp"
+                                fi
+                            done < "$file"
+
+                            # Проверяем, изменился ли файл
+                            if diff -q "$file" "$tmp" >/dev/null 2>&1; then
+                                echo "WARNING: No changes made in $file (patterns not matched)"
+                                head -n 20 "$file" || true
+                            else
+                                mv "$tmp" "$file"
+                                echo "OK: Patched $file successfully"
+                            fi
+                            rm -f "$tmp"
+                        done
+
+                        # --- ОТЛАДКА ПОСЛЕ ---
                         echo "=== DEBUG: After patch (fetch.pl) ==="
                         grep -n -E 'host|db|pass' "$TARGET_FILE3" || true
                         echo "=== DEBUG: After patch (pingit.pl) ==="
                         grep -n -E 'host|db|pass' "$TARGET_FILE4" || true
 
+                        # --- run-modules.sh ---
                         if [ ! -f run-modules.sh ]; then
                             echo "ERROR: run-modules.sh not found!"
                             exit 1
@@ -127,6 +160,7 @@ EOF
                         cp run-modules.sh web/modules/pingit/
                         find web/modules/pingit -type f \\( -name '*.sh' -o -name '*.pl' \\) -exec chmod +x {} \\; || true
 
+                        # --- Права ---
                         export JENKINS_UID_VAL=${JENKINS_UID}
                         export JENKINS_GID_VAL=${JENKINS_GID}
                         chown -R ${JENKINS_UID_VAL}:${JENKINS_GID_VAL} web/
