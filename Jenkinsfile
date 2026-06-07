@@ -64,7 +64,6 @@ pipeline {
                         export DB_NAME_VAL="${DB_NAME}"
                         export DB_HOST_VAL="${DB_HOST}"
                         
-                        # --- 1. Генерируем .env ---
                         > $ENV_FILE
                         echo "TZ=${TZ}" >> $ENV_FILE
                         echo "DB_USER=${DB_USER}" >> $ENV_FILE
@@ -73,7 +72,6 @@ pipeline {
                         echo "DB_PASS=${DB_PASS}" >> $ENV_FILE
                         chmod 600 $ENV_FILE
 
-                        # --- 2. Генерируем PHP конфиг БД ---
                         mkdir -p web/conf
                         cat > $DB_CONFIG_FILE <<EOF
 <?php return array (
@@ -88,7 +86,6 @@ pipeline {
 ?>
 EOF
 
-                        # --- ПРОВЕРКА СУЩЕСТВОВАНИЯ ФАЙЛОВ ---
                         for f in "$TARGET_FILE3" "$TARGET_FILE4"; do
                             if [ ! -f "$f" ]; then
                                 echo "CRITICAL: File not found: $f"
@@ -99,13 +96,11 @@ EOF
 
                         chmod u+w "$TARGET_FILE3" "$TARGET_FILE4"
 
-                        # --- ОТЛАДКА ДО (покажем, что реально в файлах) ---
                         echo "=== DEBUG: Before patch (fetch.pl) ==="
                         grep -n -E 'host|db|pass' "$TARGET_FILE3" || true
                         echo "=== DEBUG: Before patch (pingit.pl) ==="
                         grep -n -E 'host|db|pass' "$TARGET_FILE4" || true
 
-                        # --- Замены для PHP/HTML (оставляем как было) ---
                         [ -f "$TARGET_FILE1" ] && sed -i 's|/etc/httpd/modules/|/usr/lib/apache2/modules/|g' "$TARGET_FILE1"
                         [ -f "$TARGET_FILE2" ] && {
                           sed -i 's|value="hpinger"|value="alertsonwings"|g' "$TARGET_FILE2"
@@ -113,10 +108,6 @@ EOF
                           sed -i 's|value="pass"|value="Enter user password"|g' "$TARGET_FILE2"
                         }
 
-                        # --- ПРЯМОЙ ПЕРЕНОС ТВОЕГО sed, НО С ПРАВИЛЬНЫМ ЭКРАНИРОВАНИЕМ ДЛЯ JENKINS ---
-                        # Внимание: в Jenkinsfile внутри sh '''...''' каждый слэш для bash нужно удвоить (\\),
-                        # а каждый $ для bash нужно защитить (\\\$), чтобы Groovy его не съел.
-                        
                         sed -i "s/my \\\\$host = \"localhost\"/my \\\\$host = \"${DB_HOST_VAL}\"/g" "$TARGET_FILE3"
                         sed -i "s/my \\\\$host = \"localhost\"/my \\\\$host = \"${DB_HOST_VAL}\"/g" "$TARGET_FILE4"
                         sed -i "s/my \\\\$db = \"hpinger\"/my \\\\$db = \"${DB_NAME_VAL}\"/g" "$TARGET_FILE3"
@@ -124,13 +115,11 @@ EOF
                         sed -i "s/my \\\\$pass = \"pass\"/my \\\\$pass = \\\\$ENV\\{DB_PASS\\}/g" "$TARGET_FILE3"
                         sed -i "s/my \\\\$pass = \"pass\"/my \\\\$pass = \\\\$ENV\\{DB_PASS\\}/g" "$TARGET_FILE4"
 
-                        # --- ОТЛАДКА ПОСЛЕ ---
                         echo "=== DEBUG: After patch (fetch.pl) ==="
                         grep -n -E 'host|db|pass' "$TARGET_FILE3" || true
                         echo "=== DEBUG: After patch (pingit.pl) ==="
                         grep -n -E 'host|db|pass' "$TARGET_FILE4" || true
 
-                        # --- run-modules.sh ---
                         if [ ! -f run-modules.sh ]; then
                             echo "ERROR: run-modules.sh not found!"
                             exit 1
@@ -138,9 +127,8 @@ EOF
                         cp run-modules.sh web/modules/pingit/
                         find web/modules/pingit -type f \\( -name '*.sh' -o -name '*.pl' \\) -exec chmod +x {} \\; || true
 
-                        # --- Права ---
                         export JENKINS_UID_VAL=${JENKINS_UID}
-                        export JENKINS_GID_VAL=${JENKINS_GID_VAL}
+                        export JENKINS_GID_VAL=${JENKINS_GID}
                         chown -R ${JENKINS_UID_VAL}:${JENKINS_GID_VAL} web/
 '''
                     }
