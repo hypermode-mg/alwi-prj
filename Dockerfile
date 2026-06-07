@@ -29,8 +29,8 @@ RUN apt-get update && \
     python3-pip \
     python3-pygal \
     python3-numpy && \
-    sed -i '/ru_RU.UTF-8/s/^#//' /etc/locale.gen && \
-    locale-gen ru_RU.UTF-8 && \
+    echo "ru_RU.UTF-8 UTF-8" > /etc/locale.gen && \
+    locale-gen && \
     update-locale LANG=ru_RU.UTF-8 && \
     echo '<Directory /var/www/html/modules/pingit>' > /etc/apache2/conf-available/restrict-pingit.conf && \
     echo '    Require all denied' >> /etc/apache2/conf-available/restrict-pingit.conf && \
