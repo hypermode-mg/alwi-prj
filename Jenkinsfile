@@ -26,19 +26,14 @@ pipeline {
                 script {
                     sh '''
                         echo "Cleaning workspace..."
-                        
                         docker stop alwi-php || true
                         docker rm alwi-php || true
-                        
                         rm -rf web
                         mkdir -p web
-
                         git config --global user.email "ci@jenkins.local"
                         git config --global user.name "Jenkins CI"
-                        
                         git fetch --all
                         git checkout -f origin/main
-                        
                         echo "Workspace ready."
                     '''
                 }
@@ -112,11 +107,9 @@ EOF
                                 tmp="${file}.tmp"
                                 cp "$file" "${file}.bak"
                                 > "$tmp"
-
                                 curr=0
                                 while IFS= read -r line; do
                                     curr=$((curr + 1))
-                                    
                                     if [ "$curr" -eq 9 ]; then
                                         echo 'my $host = "'${DB_HOST_VAL}'"; #' >> "$tmp"
                                     elif [ "$curr" -eq 12 ]; then
@@ -155,16 +148,17 @@ EOF
                             chown -R ${JENKINS_UID_VAL}:${JENKINS_GID_VAL} web/
                         '''
 
+                        // ИСПРАВЛЕННАЯ КОМАНДА: используем --env вместо -e для docker compose (V2)
                         sh """
                             echo "Deploying alwi-php..."
                             docker compose -f "${DOCKER_COMPOSE_FILE}" \\
                               up -d --build --force-recreate alwi-php \\
-                              -e DB_PASS="${DB_PASS}" \\
-                              -e DB_USER="${DB_USER}" \\
-                              -e DB_ROOT_PASSWORD="${ROOT_PASSWORD}" \\
-                              -e DB_NAME="${DB_NAME}" \\
-                              -e JENKINS_UID="${JENKINS_UID}" \\
-                              -e JENKINS_GID="${JENKINS_GID}"
+                              --env DB_PASS="${DB_PASS}" \\
+                              --env DB_USER="${DB_USER}" \\
+                              --env DB_ROOT_PASSWORD="${ROOT_PASSWORD}" \\
+                              --env DB_NAME="${DB_NAME}" \\
+                              --env JENKINS_UID="${JENKINS_UID}" \\
+                              --env JENKINS_GID="${JENKINS_GID}"
                             echo "Deployment executed."
                         """
                     }
