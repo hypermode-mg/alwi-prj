@@ -36,16 +36,10 @@ a2enconf restrict-pingit || {
 # -----------------------------------------------------------------------------
 # 3. Настройка Cron
 # -----------------------------------------------------------------------------
-# Очищаем старый крон для этого сервиса, чтобы не дублировать задачи
-(crontab -l 2>/dev/null | grep -v "run-modules.sh") > /tmp/cron.new || true
-
-# Добавляем задачу: запускать каждые 5 минут
-# cd важен, чтобы относительные пути внутри скрипта работали корректно
-echo "*/5 * * * * root ( cd /var/www/html/modules/pingit && ./run-modules.sh ) >> /var/log/pingit.log 2>&1" >> /tmp/cron.new
-
-# Обновляем крон
-crontab /tmp/cron.new
-rm /tmp/cron.new
+echo 'SHELL=/bin/bash' > /etc/cron.d/pingit
+echo 'BASH_ENV=/container.env' >> /etc/cron.d/pingit
+echo '*/5 * * * * root ( cd /var/www/html/modules/pingit/ && ./run-modules.sh ) >> /var/log/pingit.log 2>&1' >> /etc/cron.d/pingit
+chmod 644 /etc/cron.d/pingit
 
 # ЗАПУСК ДЕМОНА CRON (критически важно: в минималистичных образах он не стартует сам)
 if command -v service >/dev/null 2>&1; then
