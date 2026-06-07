@@ -45,7 +45,7 @@ pipeline {
             }
         }
 
-        stage('Modify App Configuration') {
+        stage('Modify App Configuration & Deploy') {
             steps {
                 withCredentials([
                     usernamePassword(
@@ -60,20 +60,20 @@ pipeline {
                     )
                 ]) {
                     script {
-                    sh '''
-                        export DB_NAME_VAL="${DB_NAME}"
-                        export DB_HOST_VAL="${DB_HOST}"
-                        
-                        > $ENV_FILE
-                        echo "TZ=${TZ}" >> $ENV_FILE
-                        echo "DB_USER=${DB_USER}" >> $ENV_FILE
-                        echo "DB_NAME=${DB_NAME_VAL}" >> $ENV_FILE
-                        echo "DB_ROOT_PASS=${ROOT_PASSWORD}" >> $ENV_FILE
-                        echo "DB_PASS=${DB_PASS}" >> $ENV_FILE
-                        chmod 600 $ENV_FILE
-                        cp web/config.php.default web/config.php
-                        mkdir -p web/conf
-                        cat > $DB_CONFIG_FILE <<EOF
+                        sh '''
+                            export DB_NAME_VAL="${DB_NAME}"
+                            export DB_HOST_VAL="${DB_HOST}"
+                            
+                            > $ENV_FILE
+                            echo "TZ=${TZ}" >> $ENV_FILE
+                            echo "DB_USER=${DB_USER}" >> $ENV_FILE
+                            echo "DB_NAME=${DB_NAME_VAL}" >> $ENV_FILE
+                            echo "DB_ROOT_PASS=${ROOT_PASSWORD}" >> $ENV_FILE
+                            echo "DB_PASS=${DB_PASS}" >> $ENV_FILE
+                            chmod 600 $ENV_FILE
+                            cp web/config.php.default web/config.php
+                            mkdir -p web/conf
+                            cat > $DB_CONFIG_FILE <<EOF
 <?php return array (
   'enabled' => 1,
   'srvname' => 'SuperMonitoring',
@@ -86,97 +86,88 @@ pipeline {
 ?>
 EOF
 
-                        for f in "$TARGET_FILE3" "$TARGET_FILE4"; do
-                            if [ ! -f "$f" ]; then
-                                echo "CRITICAL: File not found: $f"
-                                ls -la $(dirname "$f") 2>/dev/null || true
+                            for f in "$TARGET_FILE3" "$TARGET_FILE4"; do
+                                if [ ! -f "$f" ]; then
+                                    echo "CRITICAL: File not found: $f"
+                                    ls -la $(dirname "$f") 2>/dev/null || true
+                                    exit 1
+                                fi
+                            done
+
+                            chmod u+w "$TARGET_FILE3" "$TARGET_FILE4"
+
+                            echo "=== DEBUG: Before patch (fetch.pl) ==="
+                            head -n 15 "$TARGET_FILE3" | tail -n 7 || true
+                            echo "=== DEBUG: Before patch (pingit.pl) ==="
+                            head -n 15 "$TARGET_FILE4" | tail -n 7 || true
+
+                            [ -f "$TARGET_FILE1" ] && sed -i 's|/etc/httpd/modules/|/usr/lib/apache2/modules/|g' "$TARGET_FILE1"
+                            [ -f "$TARGET_FILE2" ] && {
+                              sed -i 's|value="hpinger"|value="alertsonwings"|g' "$TARGET_FILE2"
+                              sed -i 's|value="localhost"|value="alwi-db"|g' "$TARGET_FILE2"
+                              sed -i 's|value="pass"|value="Enter user password"|g' "$TARGET_FILE2"
+                            }
+
+                            for file in "$TARGET_FILE3" "$TARGET_FILE4"; do
+                                tmp="${file}.tmp"
+                                cp "$file" "${file}.bak"
+                                > "$tmp"
+
+                                curr=0
+                                while IFS= read -r line; do
+                                    curr=$((curr + 1))
+                                    
+                                    if [ "$curr" -eq 9 ]; then
+                                        echo 'my $host = "'${DB_HOST_VAL}'"; #' >> "$tmp"
+                                    elif [ "$curr" -eq 12 ]; then
+                                        echo 'my $pass = $ENV{DB_PASS}; #' >> "$tmp"
+                                    elif [ "$curr" -eq 13 ]; then
+                                        echo 'my $db = "'${DB_NAME_VAL}'"; #' >> "$tmp"
+                                    else
+                                        echo "$line" >> "$tmp"
+                                    fi
+                                done < "$file"
+
+                                if diff -q "$file" "$tmp" >/dev/null 2>&1; then
+                                    echo "WARNING: No changes made in $file (file length might be < 13 lines)"
+                                    head -n 20 "$file" || true
+                                else
+                                    mv "$tmp" "$file"
+                                    echo "OK: Patched $file successfully (lines 9,12,13 replaced)"
+                                fi
+                                rm -f "$tmp"
+                            done
+
+                            echo "=== DEBUG: After patch (fetch.pl) ==="
+                            head -n 15 "$TARGET_FILE3" | tail -n 7 || true
+                            echo "=== DEBUG: After patch (pingit.pl) ==="
+                            head -n 15 "$TARGET_FILE4" | tail -n 7 || true
+
+                            if [ ! -f run-modules.sh ]; then
+                                echo "ERROR: run-modules.sh not found!"
                                 exit 1
                             fi
-                        done
+                            cp run-modules.sh web/modules/pingit/
+                            find web/modules/pingit -type f \\( -name '*.sh' -o -name '*.pl' \\) -exec chmod +x {} \\; || true
 
-                        chmod u+w "$TARGET_FILE3" "$TARGET_FILE4"
+                            export JENKINS_UID_VAL=${JENKINS_UID}
+                            export JENKINS_GID_VAL=${JENKINS_GID}
+                            chown -R ${JENKINS_UID_VAL}:${JENKINS_GID_VAL} web/
+                        '''
 
-                        echo "=== DEBUG: Before patch (fetch.pl) ==="
-                        head -n 15 "$TARGET_FILE3" | tail -n 7 || true
-                        echo "=== DEBUG: Before patch (pingit.pl) ==="
-                        head -n 15 "$TARGET_FILE4" | tail -n 7 || true
-
-                        [ -f "$TARGET_FILE1" ] && sed -i 's|/etc/httpd/modules/|/usr/lib/apache2/modules/|g' "$TARGET_FILE1"
-                        [ -f "$TARGET_FILE2" ] && {
-                          sed -i 's|value="hpinger"|value="alertsonwings"|g' "$TARGET_FILE2"
-                          sed -i 's|value="localhost"|value="alwi-db"|g' "$TARGET_FILE2"
-                          sed -i 's|value="pass"|value="Enter user password"|g' "$TARGET_FILE2"
-                        }
-
-                        for file in "$TARGET_FILE3" "$TARGET_FILE4"; do
-                            tmp="${file}.tmp"
-                            cp "$file" "${file}.bak"
-                            > "$tmp"
-
-                            curr=0
-                            while IFS= read -r line; do
-                                curr=$((curr + 1))
-                                
-                                if [ "$curr" -eq 9 ]; then
-                                    echo 'my $host = "'${DB_HOST_VAL}'"; #' >> "$tmp"
-                                elif [ "$curr" -eq 12 ]; then
-                                    echo 'my $pass = $ENV{DB_PASS}; #' >> "$tmp"
-                                elif [ "$curr" -eq 13 ]; then
-                                    echo 'my $db = "'${DB_NAME_VAL}'"; #' >> "$tmp"
-                                else
-                                    echo "$line" >> "$tmp"
-                                fi
-                            done < "$file"
-
-                            if diff -q "$file" "$tmp" >/dev/null 2>&1; then
-                                echo "WARNING: No changes made in $file (file length might be < 13 lines)"
-                                head -n 20 "$file" || true
-                            else
-                                mv "$tmp" "$file"
-                                echo "OK: Patched $file successfully (lines 9,12,13 replaced)"
-                            fi
-                            rm -f "$tmp"
-                        done
-
-                        echo "=== DEBUG: After patch (fetch.pl) ==="
-                        head -n 15 "$TARGET_FILE3" | tail -n 7 || true
-                        echo "=== DEBUG: After patch (pingit.pl) ==="
-                        head -n 15 "$TARGET_FILE4" | tail -n 7 || true
-
-                        if [ ! -f run-modules.sh ]; then
-                            echo "ERROR: run-modules.sh not found!"
-                            exit 1
-                        fi
-                        cp run-modules.sh web/modules/pingit/
-                        find web/modules/pingit -type f \\( -name '*.sh' -o -name '*.pl' \\) -exec chmod +x {} \\; || true
-
-                        export JENKINS_UID_VAL=${JENKINS_UID}
-                        export JENKINS_GID_VAL=${JENKINS_GID}
-                        chown -R ${JENKINS_UID_VAL}:${JENKINS_GID_VAL} web/
-'''
+                        sh """
+                            echo "Deploying alwi-php..."
+                            docker compose -f "${DOCKER_COMPOSE_FILE}" \\
+                              up -d --build --force-recreate alwi-php \\
+                              -e DB_PASS="${DB_PASS}" \\
+                              -e DB_USER="${DB_USER}" \\
+                              -e DB_ROOT_PASSWORD="${ROOT_PASSWORD}" \\
+                              -e DB_NAME="${DB_NAME}" \\
+                              -e JENKINS_UID="${JENKINS_UID}" \\
+                              -e JENKINS_GID="${JENKINS_GID}"
+                            echo "Deployment executed."
+                        """
                     }
-                }
-            }
-        }
-
-        stage('Deploy alwi-php only') {
-            steps {
-                script {
-                    sh """
-                        echo "Deploying alwi-php..."
-                        
-                        # Явно передаём переменные в Docker Compose через -e
-                        docker compose -f "${DOCKER_COMPOSE_FILE}" \\
-                          up -d --build --force-recreate alwi-php \\
-                          -e DB_PASS="${DB_PASS}" \\
-                          -e DB_USER="${DB_USER}" \\
-                          -e DB_ROOT_PASSWORD="${ROOT_PASSWORD}" \\
-                          -e DB_NAME="${DB_NAME}" \\
-                          -e JENKINS_UID="${JENKINS_UID}" \\
-                          -e JENKINS_GID="${JENKINS_GID}"
-                          
-                        echo "Deployment command executed."
-                    """
                 }
             }
         }
