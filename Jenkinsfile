@@ -118,11 +118,11 @@ EOF
                                 curr=$((curr + 1))
                                 
                                 if [ "$curr" -eq 9 ]; then
-                                    echo "my \$host = \"${DB_HOST_VAL}\"; #" >> "$tmp"
+                                    echo 'my $host = "'${DB_HOST_VAL}'"; #' >> "$tmp"
                                 elif [ "$curr" -eq 12 ]; then
-                                    echo "my \$pass = \$ENV{DB_PASS}; #" >> "$tmp"
+                                    echo 'my $pass = $ENV{DB_PASS}; #' >> "$tmp"
                                 elif [ "$curr" -eq 13 ]; then
-                                    echo "my \$db = \"${DB_NAME_VAL}\"; #" >> "$tmp"
+                                    echo 'my $db = "'${DB_NAME_VAL}'"; #' >> "$tmp"
                                 else
                                     echo "$line" >> "$tmp"
                                 fi
