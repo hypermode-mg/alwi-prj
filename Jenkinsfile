@@ -126,8 +126,6 @@ EOF
                             export JENKINS_GID_VAL=${JENKINS_GID}
                             echo "Setting ownership to UID ${JENKINS_UID_VAL}..."
                             chown -R ${JENKINS_UID_VAL}:${JENKINS_GID_VAL} web/
-                            chmod -R 755 web/
-                            
                             echo "Permissions fixed for UID ${JENKINS_UID_VAL}"
                         '''
                     }
