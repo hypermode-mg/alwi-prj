@@ -6,7 +6,7 @@ echo "Starting entrypoint script..."
 # -----------------------------------------------------------------------------
 # ДОБАВЛЕНО: Экспорт переменных окружения в файл
 # -----------------------------------------------------------------------------
-declare -p | grep -E 'PATH|DB_PASS' > /container.env
+declare -p | grep -E 'PATH|DB_*' > /container.env
 chmod 644 /container.env
 echo "Environment variables exported to /container.env"
 
