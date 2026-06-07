@@ -22,7 +22,6 @@ services:
     build:
       context: .
       args:
-      args:
         JENKINS_UID: "999"
         JENKINS_GID: "987"
     container_name: alwi-php
