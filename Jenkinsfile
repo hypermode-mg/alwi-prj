@@ -64,7 +64,7 @@ pipeline {
                         export DB_NAME_VAL="${DB_NAME}"
                         export DB_HOST_VAL="${DB_HOST}"
                         
-                        # --- 1. Генерируем .env файл ---
+                        # --- 1. Генерируем .env ---
                         > $ENV_FILE
                         echo "TZ=${TZ}" >> $ENV_FILE
                         echo "DB_USER=${DB_USER}" >> $ENV_FILE
@@ -88,58 +88,82 @@ pipeline {
 ?>
 EOF
 
-                        # --- ЖЁСТКАЯ ПРОВЕРКА СУЩЕСТВОВАНИЯ ФАЙЛОВ ---
+                        # --- ЖЁСТКАЯ ПРОВЕРКА ПУТЕЙ И СУЩЕСТВОВАНИЯ ---
                         for f in "$TARGET_FILE1" "$TARGET_FILE2" "$TARGET_FILE3" "$TARGET_FILE4"; do
                             if [ ! -f "$f" ]; then
-                                echo "ERROR: Expected file not found: $f"
+                                echo "CRITICAL: File not found: $f"
+                                ls -la $(dirname "$f") || true
                                 exit 1
                             fi
                         done
 
                         chmod u+w "$TARGET_FILE1" "$TARGET_FILE2" "$TARGET_FILE3" "$TARGET_FILE4"
 
-                        # --- Отладочный вывод ПЕРЕД заменами ---
-                        echo "=== DEBUG: Before patch ==="
-                        grep -n -E 'host|db|pass' "$TARGET_FILE3" || true
-                        grep -n -E 'host|db|pass' "$TARGET_FILE4" || true
+                        # --- ОТЛАДКА: выводим полные пути и первые строки файлов ---
+                        echo "=== DEBUG: Files to patch ==="
+                        echo "TARGET_FILE3: $TARGET_FILE3"
+                        head -n 10 "$TARGET_FILE3" || true
+                        echo "TARGET_FILE4: $TARGET_FILE4"
+                        head -n 10 "$TARGET_FILE4" || true
 
-                        # --- 3. Замены через sed (для PHP/HTML частей) ---
+                        # --- Замены для PHP/HTML ---
                         sed -i 's|/etc/httpd/modules/|/usr/lib/apache2/modules/|g' "$TARGET_FILE1"
                         sed -i 's|value="hpinger"|value="alertsonwings"|g' "$TARGET_FILE2"
                         sed -i 's|value="localhost"|value="alwi-db"|g' "$TARGET_FILE2"
                         sed -i 's|value="pass"|value="Enter user password"|g' "$TARGET_FILE2"
 
-                        echo "DEBUG: Patching DB vars. Host='${DB_HOST_VAL}'"
-                        
-                        # --- НАДЁЖНЫЕ замены через perl (вместо проблемного sed) ---
-                        # host: my $host = "localhost" -> my $host = "alwi-db"
-                        perl -pi -e "s/my\\s*\\$host\\s*=\\s*\\\"localhost\\\"/my \\$host = \"${DB_HOST_VAL}\"/g" "$TARGET_FILE3" "$TARGET_FILE4"
-                        # db: my $db = "hpinger" -> my $db = "alertsonwings"
-                        perl -pi -e "s/my\\s*\\$db\\s*=\\s*\\\"hpinger\\\"/my \\$db = \"${DB_NAME_VAL}\"/g" "$TARGET_FILE3" "$TARGET_FILE4"
-                        # pass: my $pass = "pass" -> my $pass = $ENV{DB_PASS}
-                        perl -pi -e "s/my\\s*\\$pass\\s*=\\s*\\\"pass\\\"/my \\$pass = \$ENV{DB_PASS}/g" "$TARGET_FILE3" "$TARGET_FILE4"
+                        # --- СУПЕР-ПРОЗРАЧНЫЕ ЗАМЕНЫ ЧЕРЕЗ BASH (без сложных экранирований) ---
+                        # Создаём временные файлы с нужными строками
+                        tmp_host="my \$host = \"${DB_HOST_VAL}\";"
+                        tmp_db="my \$db = \"${DB_NAME_VAL}\";"
+                        tmp_pass="my \$pass = \$ENV{DB_PASS};"
 
-                        # --- Отладочный вывод ПОСЛЕ замен ---
+                        for file in "$TARGET_FILE3" "$TARGET_FILE4"; do
+                            # Делаем бэкап
+                            cp "$file" "${file}.bak"
+
+                            # Читаем построчно и заменяем только нужные строки
+                            awk -v h="$tmp_host" -v d="$tmp_db" -v p="$tmp_pass" '
+                            {
+                                if ($0 ~ /my[[:space:]]*\\$host[[:space:]]*=[[:space:]]*["][^"]*["]/) {
+                                    print h; next;
+                                }
+                                if ($0 ~ /my[[:space:]]*\\$db[[:space:]]*=[[:space:]]*["][^"]*["]/) {
+                                    print d; next;
+                                }
+                                if ($0 ~ /my[[:space:]]*\\$pass[[:space:]]*=[[:space:]]*["][^"]*["]/) {
+                                    print p; next;
+                                }
+                                print $0
+                            }' "$file" > "${file}.patched"
+
+                            # Проверяем, что патч реально что-то изменил
+                            if diff -q "$file" "${file}.patched" > /dev/null 2>&1; then
+                                echo "WARNING: No changes detected in $file after awk patch!"
+                                head -n 20 "$file" || true
+                            else
+                                mv "${file}.patched" "$file"
+                                echo "OK: Patched $file"
+                            fi
+                        done
+
+                        # --- ОТЛАДКА ПОСЛЕ ---
                         echo "=== DEBUG: After patch ==="
                         grep -n -E 'host|db|pass' "$TARGET_FILE3" || true
                         grep -n -E 'host|db|pass' "$TARGET_FILE4" || true
 
-                        # --- Проверка и копирование run-modules.sh ---
+                        # --- run-modules.sh ---
                         if [ ! -f run-modules.sh ]; then
-                            echo "ERROR: run-modules.sh not found in workspace!"
+                            echo "ERROR: run-modules.sh not found!"
                             exit 1
                         fi
                         cp run-modules.sh web/modules/pingit/
-                        
-                        # Даём права на выполнение скриптам
                         find web/modules/pingit -type f \\( -name '*.sh' -o -name '*.pl' \\) -exec chmod +x {} \\; || true
 
-                        # --- 4. Синхронизация прав ---
+                        # --- Права ---
                         export JENKINS_UID_VAL=${JENKINS_UID}
                         export JENKINS_GID_VAL=${JENKINS_GID}
-                        echo "Setting ownership to UID ${JENKINS_UID_VAL}..."
                         chown -R ${JENKINS_UID_VAL}:${JENKINS_GID_VAL} web/
-                        echo "Permissions fixed for UID ${JENKINS_UID_VAL}"
 '''
                     }
                 }
