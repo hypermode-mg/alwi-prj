@@ -3,11 +3,11 @@
 use DBI; # DBI  Perl!!!
 
 #==========================================================
-my $host = "localhost"; #
-my $port = "3306"; #
-my $user = "mysql-user"; #
-my $pass = "pass"; #
-my $db = "hpinger"; #  
+my $host = $ENV{DB_HOST} || "alwi-db";
+my $port = $ENV{DB_PORT} || "3306";
+my $user = $ENV{DB_USER} || "mysql-user";
+my $pass = $ENV{DB_PASS} || '';
+my $db   = $ENV{DB_NAME} || "alertsonwings";
 #==========================================================
 #==========================================================
 

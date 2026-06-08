@@ -17,6 +17,7 @@ RUN apt-get update && \
     php-mysqli \
     php-calendar \
     wget \
+    nmap \
     cron \
     locales \
     libdbd-mysql-perl \
