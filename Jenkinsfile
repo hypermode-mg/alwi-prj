@@ -29,7 +29,7 @@ pipeline {
                         git config --global user.email "ci@jenkins.local"
                         git config --global user.name "Jenkins CI"
                         git fetch --all
-                        git checkout -f origin/main
+                        git checkout -f origin/devel
                         echo "Workspace ready."
                     '''
                 }
