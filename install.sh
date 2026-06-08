@@ -4,8 +4,6 @@
 ENV_FILE=".env"
 TARGET_FILE1="web/install/step1.php"
 TARGET_FILE2="web/install/step2.php"
-TARGET_FILE3="web/modules/pingit/pingit.pl"
-TARGET_FILE4="web/modules/pingit/fetch.pl"
 
 echo "DB_USER=mysql-user" > $ENV_FILE
 echo "DB_NAME=alertsonwings" >> $ENV_FILE
@@ -69,14 +67,6 @@ sed -i 's|/etc/httpd/modules/|/usr/lib/apache2/modules/|g' "$TARGET_FILE1"
 sed -i 's|value="hpinger"|value="alertsonwings"|g' "$TARGET_FILE2"
 sed -i 's|value="localhost"|value="alwi-db"|g' "$TARGET_FILE2"
 sed -i 's|value="pass"|value="Enter user password"|g' "$TARGET_FILE2"
-
-# Корректируем файл с настройками БД для использования в perl-модулях
-sed -i "s/my \$host = \"localhost\"/my \$host = \"alwi-db\"/g" "$TARGET_FILE3"
-sed -i "s/my \$host = \"localhost\"/my \$host = \"alwi-db\"/g" "$TARGET_FILE4"
-sed -i "s/my \$db = \"hpinger\"/my \$db = \"alertsonwings\"/g" "$TARGET_FILE3"
-sed -i "s/my \$db = \"hpinger\"/my \$db = \"alertsonwings\"/g" "$TARGET_FILE4"
-sed -i "s/my \$pass = \"pass\"/my \$pass = \$ENV\{DB_PASS\}/g" "$TARGET_FILE3"
-sed -i "s/my \$pass = \"pass\"/my \$pass = \$ENV\{DB_PASS\}/g" "$TARGET_FILE4"
 
 echo "Внесены все необходимые изменения в файлы $TARGET_FILE1, $TARGET_FILE2, $TARGET_FILE3 и $TARGET_FILE4"
 

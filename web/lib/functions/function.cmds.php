@@ -37,7 +37,7 @@ function doPrintAllCmd($globalSS){
   
    foreach($result as $line) {
      if($line[3]=="1")
-       $line[3]="<b><font color=green>".$_lang['stEXECUTING']."</font></b>";
+       $line[3]="<b><font color=blue>".$_lang['stEXECUTING']."</font></b>";
      if($line[3]=="2")
        $line[3]="<b><font color=green>".$_lang['stEXECUTED']." <a href=right.php?srv=".$globalSS['connectionParams']['srv']."&id=2&actid=7&cmdid=".$line[0].">".$_lang['stREPEAT']."</a></font></b>";
      if($line[3]=="0")
