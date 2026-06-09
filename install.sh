@@ -5,6 +5,8 @@ ENV_FILE=".env"
 TARGET_FILE1="web/install/step1.php"
 TARGET_FILE2="web/install/step2.php"
 
+echo "TZ=Asia/Yekaterinburg" > $ENV_FILE
+echo "DB_HOST=alwi-db" >> $ENV_FILE
 echo "DB_USER=mysql-user" > $ENV_FILE
 echo "DB_NAME=alertsonwings" >> $ENV_FILE
 
