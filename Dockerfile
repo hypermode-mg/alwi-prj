@@ -28,9 +28,9 @@ RUN apt-get update && \
     echo "ru_RU.UTF-8 UTF-8" > /etc/locale.gen && \
     locale-gen && \
     update-locale LANG=ru_RU.UTF-8 && \
-    echo '<Directory /var/www/html/modules/pingit>' > /etc/apache2/conf-available/restrict-pingit.conf && \
-    echo '    Require all denied' >> /etc/apache2/conf-available/restrict-pingit.conf && \
-    echo '</Directory>' >> /etc/apache2/conf-available/restrict-pingit.conf && \
+    echo '<Directory /var/www/html/modules>' > /etc/apache2/conf-available/restrict-modules.conf && \
+    echo '    Require all denied' >> /etc/apache2/conf-available/restrict-modules.conf && \
+    echo '</Directory>' >> /etc/apache2/conf-available/restrict-modules.conf && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 

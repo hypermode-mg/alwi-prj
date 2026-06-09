@@ -27,9 +27,9 @@ chmod 755 /var/log/apache2 /var/run/apache2
 # -----------------------------------------------------------------------------
 # 2. Защита скриптов от прямого доступа через веб
 # -----------------------------------------------------------------------------
-echo "Enabling Apache config to restrict access to /modules/pingit..."
-a2enconf restrict-pingit || {
-    echo "WARNING: Could not enable restrict-pingit.conf"
+echo "Enabling Apache config to restrict access to /modules..."
+a2enconf restrict-modules || {
+    echo "WARNING: Could not enable restrict-modules.conf"
 }
 
 
@@ -39,7 +39,8 @@ a2enconf restrict-pingit || {
 echo 'SHELL=/bin/bash' > /etc/cron.d/pingit
 echo 'BASH_ENV=/container.env' >> /etc/cron.d/pingit
 echo '*/5 * * * * root ( cd /var/www/html/modules/pingit/ && ./run-modules.sh ) >> /var/log/pingit.log 2>&1' >> /etc/cron.d/pingit
-chmod 644 /etc/cron.d/pingit
+echo '*/5 * * * * root ( cd /var/www/html/modules/nmapit/ && ./autonmap.sh ) >> /var/log/nmapit.log 2>&1' >> /etc/cron.d/nmapit
+chmod 644 /etc/cron.d/*
 
 # ЗАПУСК ДЕМОНА CRON (критически важно: в минималистичных образах он не стартует сам)
 if command -v service >/dev/null 2>&1; then
@@ -65,6 +66,8 @@ fi
 # Гарантируем бит выполнения (x) для скриптов, так как Git/Jenkins могут его сбросить
 chmod +x /var/www/html/modules/pingit/*.sh
 chmod +x /var/www/html/modules/pingit/*.pl
+chmod +x /var/www/html/modules/nmapit/*.sh
+chmod +x /var/www/html/modules/nmapit/*.pl
 
 echo "Starting Apache..."
 exec apache2-foreground
