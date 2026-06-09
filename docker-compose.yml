@@ -10,7 +10,8 @@ services:
       MARIADB_USER: ${DB_USER}
       MARIADB_PASSWORD: ${DB_PASS}
     volumes:
-      - ./db:/var/lib/mysql
+      - alwi-db-vol:/var/lib/mysql
+      - ./dump:/mnt/dump
     networks:
       - alwi-net
     healthcheck:
