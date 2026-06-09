@@ -1,5 +1,5 @@
 pipeline {
-    agent { label 'docker_agent' }
+    agent { label 'prod_agent' }
 
     environment {
         ENV_FILE = ".env"
@@ -29,7 +29,7 @@ pipeline {
                         git config --global user.email "ci@jenkins.local"
                         git config --global user.name "Jenkins CI"
                         git fetch --all
-                        git checkout -f origin/devel
+                        git checkout -f origin/main
                         echo "Workspace ready."
                     '''
                 }

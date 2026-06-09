@@ -48,3 +48,6 @@ services:
 networks:
   alwi-net:
     driver: bridge
+
+volumes:
+  alwi-db-vol:
