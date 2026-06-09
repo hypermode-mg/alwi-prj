@@ -28,10 +28,6 @@ RUN apt-get update && \
     echo "ru_RU.UTF-8 UTF-8" > /etc/locale.gen && \
     locale-gen && \
     update-locale LANG=ru_RU.UTF-8 && \
-    echo '<Directory /var/www/html/modules/pingit/>' > /etc/apache2/conf-available/restrict-modules.conf && \
-    echo '<Directory /var/www/html/modules/nmapit/>' >> /etc/apache2/conf-available/restrict-modules.conf && \
-    echo '    Require all denied' >> /etc/apache2/conf-available/restrict-modules.conf && \
-    echo '</Directory>' >> /etc/apache2/conf-available/restrict-modules.conf && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
@@ -39,7 +35,9 @@ RUN if [ -n "${JENKINS_GID}" ]; then groupmod -g "${JENKINS_GID}" www-data || tr
 RUN if [ -n "${JENKINS_UID}" ]; then usermod -u "${JENKINS_UID}" www-data || true; fi
 
 RUN ln -sf /usr/bin/python3 /usr/bin/python
-RUN a2enmod rewrite
+COPY restrict-modules.conf /etc/apache2/conf-available/
+RUN a2enconf restrict-modules && \
+    a2enmod rewrite
 
 COPY docker-entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh

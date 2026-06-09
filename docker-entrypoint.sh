@@ -11,7 +11,7 @@ chmod 644 /container.env
 echo "Environment variables exported to /container.env"
 
 # -----------------------------------------------------------------------------
-# 1. Настройка прав доступа (для Варианта А)
+# 1. Настройка прав доступа
 # -----------------------------------------------------------------------------
 # Так как в Dockerfile мы сделали usermod -u <JENKINS_UID> www-data,
 # владелец файлов на хосте (jenkins) и внутри контейнера (www-data) теперь один и тот же (по UID).
@@ -23,18 +23,8 @@ find /var/www/html -type f -exec chmod 644 {} \;
 mkdir -p /var/log/apache2 /var/run/apache2
 chmod 755 /var/log/apache2 /var/run/apache2
 
-
 # -----------------------------------------------------------------------------
-# 2. Защита скриптов от прямого доступа через веб
-# -----------------------------------------------------------------------------
-echo "Enabling Apache config to restrict access to /modules..."
-a2enconf restrict-modules || {
-    echo "WARNING: Could not enable restrict-modules.conf"
-}
-
-
-# -----------------------------------------------------------------------------
-# 3. Настройка Cron
+# 2. Настройка Cron
 # -----------------------------------------------------------------------------
 echo 'SHELL=/bin/bash' > /etc/cron.d/pingit
 echo 'BASH_ENV=/container.env' >> /etc/cron.d/pingit
@@ -52,7 +42,7 @@ echo "Cron daemon started."
 
 
 # -----------------------------------------------------------------------------
-# 4. Финальные проверки и права на выполнение скриптов
+# 3. Финальные проверки и права на выполнение скриптов
 # -----------------------------------------------------------------------------
 if [ ! -f /var/www/html/modules/pingit/run-modules.sh ]; then
     echo "ERROR: run-modules.sh not found in expected location!"
