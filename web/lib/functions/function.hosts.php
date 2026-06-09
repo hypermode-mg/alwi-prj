@@ -64,7 +64,7 @@ $groupname="";
      if($line[2]=="1")
        $line[2]="<b><font color=green>".$_lang['stENABLED']."</font></b>";
      else
-       $line[2]="<b><font color=red>".$_lang['stDISABLED']."</font></b>";
+       $line[2]="<b><font color=blue>".$_lang['stDISABLED']."</font></b>";
      
      if($groupname<>$line[12]){
       echo "<tr><td colspan=12> 
