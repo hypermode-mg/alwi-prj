@@ -30,6 +30,7 @@ pipeline {
                         git config --global user.name "Jenkins CI"
                         git fetch --all
                         git checkout -f origin/devel
+			git pull origin devel
                         echo "Workspace ready."
                     '''
                 }
