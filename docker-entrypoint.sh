@@ -29,6 +29,8 @@ chmod 755 /var/log/apache2 /var/run/apache2
 echo 'SHELL=/bin/bash' > /etc/cron.d/pingit
 echo 'BASH_ENV=/container.env' >> /etc/cron.d/pingit
 echo '* * * * * root ( cd /var/www/html/modules/pingit/ && ./run-modules.sh ) >> /var/log/pingit.log 2>&1' >> /etc/cron.d/pingit
+echo 'SHELL=/bin/bash' > /etc/cron.d/nmapit
+echo 'BASH_ENV=/container.env' >> /etc/cron.d/nmapit
 echo '*/5 * * * * root ( cd /var/www/html/modules/nmapit/ && ./autonmap.sh ) >> /var/log/nmapit.log 2>&1' >> /etc/cron.d/nmapit
 chmod 644 /etc/cron.d/*
 
