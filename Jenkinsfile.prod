@@ -12,24 +12,19 @@ pipeline {
         JENKINS_GID = '987'
     }
 
-    options {
-        skipDefaultCheckout true
-    }
-
     stages {
+
         stage('Pre-Cleanup & Checkout') {
             steps {
+                checkout scm
                 script {
                     sh '''
                         echo "Cleaning workspace..."
                         docker stop alwi-php || true
                         docker rm alwi-php || true
-                        rm -rf web
-                        mkdir -p web
                         git config --global user.email "ci@jenkins.local"
                         git config --global user.name "Jenkins CI"
                         git fetch --all
-                        git checkout -f origin/main
                         echo "Workspace ready."
                     '''
                 }
