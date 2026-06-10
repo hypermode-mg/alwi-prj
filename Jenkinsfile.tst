@@ -18,6 +18,19 @@ pipeline {
                 checkout scm
                 script {
                     sh '''
+            		echo "=== Текущая ветка и коммит ==="
+            		git rev-parse --abbrev-ref HEAD
+            		git rev-parse HEAD
+                
+            		echo "=== Содержимое корня ==="
+            		ls -la
+                
+            		echo "=== Содержимое web ==="
+            		ls -la web
+                
+            		echo "=== Поиск config.default.php ==="
+            		find . -name "config.default.php"
+
                         echo "Cleaning workspace..."
                         docker stop alwi-php || true
                         docker rm alwi-php || true
