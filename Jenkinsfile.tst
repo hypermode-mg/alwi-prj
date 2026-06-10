@@ -63,7 +63,7 @@ EOF
                             cat > $DB_CONFIG_FILE <<EOF
 <?php return array (
   'enabled' => 1,
-  'srvname' => 'SuperMonitoring',
+  'srvname' => 'SuperMonitoring.tst',
   'db' => '${DB_NAME}',
   'user' => '${DB_USER}',
   'pass' => '${DB_PASS}',
