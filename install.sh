@@ -78,4 +78,3 @@ unset ROOT_PASSWORD ROOT_PASSWORD2 USER_PASSWORD USER_PASSWORD2
 cp run-modules.sh web/modules/pingit/
 
 docker compose up -d
-
