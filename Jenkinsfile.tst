@@ -12,10 +12,6 @@ pipeline {
         JENKINS_GID = '987'
     }
 
-#    options {
-#        skipDefaultCheckout true
-    }
-
     stages {
         stage('Pre-Cleanup & Checkout') {
             steps {
@@ -30,8 +26,6 @@ pipeline {
                         git config --global user.email "ci@jenkins.local"
                         git config --global user.name "Jenkins CI"
                         git fetch --all
-#                        git checkout -f origin/devel
-#                        git pull origin devel
                         echo "Workspace ready."
                     '''
                 }
