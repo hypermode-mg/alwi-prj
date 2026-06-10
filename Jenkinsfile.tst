@@ -28,9 +28,9 @@ pipeline {
                         mkdir -p web
                         git config --global user.email "ci@jenkins.local"
                         git config --global user.name "Jenkins CI"
-                        git fetch --all
+#                        git fetch --all
                         git checkout -f origin/devel
-			git pull origin devel
+                        git pull origin devel
                         echo "Workspace ready."
                     '''
                 }
