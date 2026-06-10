@@ -12,13 +12,14 @@ pipeline {
         JENKINS_GID = '987'
     }
 
-    options {
-        skipDefaultCheckout true
+#    options {
+#        skipDefaultCheckout true
     }
 
     stages {
         stage('Pre-Cleanup & Checkout') {
             steps {
+		chekout scm
                 script {
                     sh '''
                         echo "Cleaning workspace..."
@@ -28,9 +29,9 @@ pipeline {
                         mkdir -p web
                         git config --global user.email "ci@jenkins.local"
                         git config --global user.name "Jenkins CI"
-#                        git fetch --all
-                        git checkout -f origin/devel
-                        git pull origin devel
+                        git fetch --all
+#                        git checkout -f origin/devel
+#                        git pull origin devel
                         echo "Workspace ready."
                     '''
                 }
