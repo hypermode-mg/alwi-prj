@@ -15,7 +15,7 @@ pipeline {
     stages {
         stage('Pre-Cleanup & Checkout') {
             steps {
-		chekout scm
+                checkout scm
                 script {
                     sh '''
                         echo "Cleaning workspace..."
