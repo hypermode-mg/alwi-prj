@@ -1,5 +1,5 @@
 pipeline {
-    agent { label 'docker_agent' }
+    agent { label 'test_agent' }
 
     environment {
         ENV_FILE = ".env"
