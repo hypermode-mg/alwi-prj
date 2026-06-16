@@ -34,11 +34,9 @@ RUN apt-get update && \
 RUN if [ -n "${JENKINS_GID}" ]; then groupmod -g "${JENKINS_GID}" www-data || true; fi
 RUN if [ -n "${JENKINS_UID}" ]; then usermod -u "${JENKINS_UID}" www-data || true; fi
 
-RUN ln -sf /usr/bin/python3 /usr/bin/python
-COPY restrict-modules.conf /etc/apache2/conf-enabled/restrict-modules.conf
-COPY status.conf /etc/apache2/conf-enabled/status.conf
-RUN a2enmod rewrite && \
-    a2enmod authz_core
+COPY restrict-modules.conf /etc/apache2/conf-available/
+RUN a2enconf restrict-modules && \
+    a2enmod rewrite
 
 COPY docker-entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
