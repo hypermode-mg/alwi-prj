@@ -38,6 +38,7 @@ RUN ln -sf /usr/bin/python3 /usr/bin/python
 COPY restrict-modules.conf /etc/apache2/conf-available/
 COPY status.conf /etc/apache2/mods-enabled/
 RUN a2enconf restrict-modules && \
+    a2enconf status && \
     a2enmod rewrite
 
 COPY docker-entrypoint.sh /usr/local/bin/
