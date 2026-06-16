@@ -11,11 +11,23 @@ variable "folder_id" {
 variable "cloud_zone" {
   description = "Зона доступности"
   type        = string
-  default     = "ru-central1-d"
+  default     = "ru-central1-a"
 }
 
-variable "ssh_key_file" {
-  description = "Путь до публичного SSH-ключа"
+variable "my_ip" {
+  description = "Текущий IP-адрес для SG"
+  type        = string
+  default     = "0.0.0.0/0"
+}
+
+variable "sa_key_file" {
+  description = "Путь к JSON-ключу SA"
+  type        = string
+  default     = ""
+}
+
+variable "ssh_public_key" {
+  description = "Публичный SSH-ключ"
   type        = string
 }
 
@@ -41,4 +53,9 @@ variable "data_disk_size" {
   description = "Размер persistent-диска для данных в ГБ"
   type        = number
   default     = 100
+}
+
+variable "grafana_admin_password" {
+  type      = string
+  sensitive = true
 }

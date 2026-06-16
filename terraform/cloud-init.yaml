@@ -1,0 +1,122 @@
+#cloud-config
+package_update: true
+packages:
+  - ca-certificates
+  - curl
+  - gnupg
+  - lsb-release
+  - apt-transport-https
+
+write_files:
+  - path: /home/ubuntu/monitoring-stack/.env
+    permissions: '0600'
+    owner: ubuntu:ubuntu
+    content: |
+      GF_SECURITY_ADMIN_USER=admin
+      GF_SECURITY_ADMIN_PASSWORD=${grafana_password_placeholder}
+      PROMETHEUS_RETENTION_TIME=30d
+
+  - path: /home/ubuntu/monitoring-stack/prometheus/prometheus.yml
+    permissions: '0644'
+    owner: ubuntu:ubuntu
+    content: |
+      global:
+        scrape_interval: 15s
+        evaluation_interval: 15s
+      scrape_configs:
+        - job_name: "node"
+          static_configs:
+            - targets: ["node-exporter:9100"]
+        - job_name: "prometheus"
+          static_configs:
+            - targets: ["localhost:9090"]
+
+  - path: /home/ubuntu/monitoring-stack/docker-compose.yml
+    permissions: '0644'
+    owner: ubuntu:ubuntu
+    content: |
+      version: '3.9'
+      services:
+        prometheus:
+          image: prom/prometheus:v2.59.0
+          container_name: prometheus
+          restart: unless-stopped
+          volumes:
+            - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+            - prometheus-data:/prometheus
+          command:
+            - '--config.file=/etc/prometheus/prometheus.yml'
+            - '--storage.tsdb.path=/prometheus'
+            - '--storage.tsdb.retention.time=${PROMETHEUS_RETENTION_TIME:-30d}'
+            - '--web.enable-lifecycle'
+          ports:
+            - "9090:9090"
+          networks:
+            - monitoring
+          healthcheck:
+            test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
+            interval: 30s
+            timeout: 5s
+            retries: 3
+        node-exporter:
+          image: prom/node-exporter:v1.8.2
+          container_name: node-exporter
+          restart: unless-stopped
+          pid: host
+          network_mode: host
+          volumes:
+            - /proc:/host/proc:ro
+            - /sys:/host/sys:ro
+            - /:/rootfs:ro
+          command:
+            - '--path.procfs=/host/proc'
+            - '--path.sysfs=/host/sys'
+            - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+            - '--web.listen-address=:9100'
+        grafana:
+          image: grafana/grafana:11.1.0
+          container_name: grafana
+          restart: unless-stopped
+          user: "472"
+          environment:
+            - GF_SECURITY_ADMIN_USER=${GF_SECURITY_ADMIN_USER:-admin}
+            - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD:-admin}
+            - GF_USERS_ALLOW_SIGN_UP=false
+          volumes:
+            - grafana-data:/var/lib/grafana
+          ports:
+            - "3000:3000"
+          depends_on:
+            prometheus:
+              condition: service_healthy
+      volumes:
+        prometheus-data:
+        grafana-data:
+      networks:
+        monitoring:
+          driver: bridge
+
+  # Скрипт-обёртка, который просто готовит папки и запускает compose
+  - path: /home/ubuntu/install_monitoring.sh
+    permissions: '0755'
+    owner: ubuntu:ubuntu
+    content: |
+      #!/bin/bash
+      set -euo pipefail
+
+      # Установка Docker
+      sudo mkdir -p /etc/apt/keyrings
+      curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+      sudo chmod a+r /etc/apt/keyrings/docker.gpg
+      echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+      sudo apt update && sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
+      # Гарантируем структуру папок (на случай, если write_files отработал не по порядку)
+      mkdir -p /home/ubuntu/monitoring-stack/{prometheus,grafana}
+
+      cd /home/ubuntu/monitoring-stack
+      docker compose up -d
+      touch /home/ubuntu/.monitoring_installed
+
+runcmd:
+  - ["/home/ubuntu/install_monitoring.sh"]

@@ -1,0 +1,12 @@
+# Необходимо переименовать файл в terraform.tfvars и подставить свои значения переменных
+cloud_id = "ID облака"
+folder_id = "ID каталога"
+sa_key_file = "имя файла ключа сервисного аккаунта, например key.json"
+ssh_public_key = "публичный ключ, передаваемый в ВМ для ssh-подключения"
+cloud_zone = "зона, в которой будут созданы ресурсы"
+my_ip = "твой IP/32"
+vm_cpu = 2
+vm_ram = 4
+boot_disk_size = 50
+data_disk_size = 100
+grafana_admin_password = "123ПарольАдминаGrafana!"
