@@ -35,8 +35,9 @@ RUN if [ -n "${JENKINS_GID}" ]; then groupmod -g "${JENKINS_GID}" www-data || tr
 RUN if [ -n "${JENKINS_UID}" ]; then usermod -u "${JENKINS_UID}" www-data || true; fi
 
 COPY restrict-modules.conf /etc/apache2/conf-available/
+COPY status.conf /etc/apache2/conf-available/
 RUN a2enconf restrict-modules && \
-    a2enmod rewrite
+    a2enconf status
 
 COPY docker-entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
