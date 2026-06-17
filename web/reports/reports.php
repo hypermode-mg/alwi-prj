@@ -245,7 +245,7 @@ h.devname,
 p.alarm,
 h.id,
 FROM_UNIXTIME(p.date,'%Y-%m-%d %H:%i:%s') as d2
-FROM png_messages p, png_hosts h WHERE h.name=p.host order by d2 desc limit 10";
+FROM png_messages p, png_hosts h WHERE h.name=p.host order by d2 desc limit 30";
 
 
 //последняя дата опроса
